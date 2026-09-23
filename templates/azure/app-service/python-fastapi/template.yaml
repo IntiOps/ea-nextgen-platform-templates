@@ -1,0 +1,79 @@
+schema_version: '1.0'
+id: fastapi-azure-webapp
+version: 0.2.0
+name: FastAPI on Azure Web App
+owner: platform-team
+description: Executable FastAPI, Terraform and GitHub Actions candidate. Local validation
+  passed; Azure deployment evidence pending.
+status: candidate
+parameters:
+- name: instance
+  description: 'Unique instance name: 3–24 lowercase letters, digits or hyphens.'
+  kind: string
+- name: location
+  description: Azure region identifier.
+  kind: string
+  default: westeurope
+- name: cloud_credential
+  description: Governed identity reference; native workflow uses configured OIDC environment
+    variables.
+  kind: credential_reference
+variants:
+- id: azure-terraform-github
+  cloud: azure
+  runtime: azure_web_app
+  iac_engine: terraform
+  repository_provider: github
+  cicd_provider: github_actions
+  requirements:
+    capabilities:
+    - plan
+    - deploy
+    - delete
+    tools:
+      terraform: =1.14.9
+      azurerm: =4.62.0
+      python: '3.12'
+    prerequisites:
+    - Sandbox subscription with Microsoft.Web registered, permissions to create dedicated
+      resource groups, and a pre-existing Azure Blob Terraform backend.
+    - GitHub repository on main with OIDC credentials for demo-plan, demo-deploy and
+      demo-cleanup.
+    - Required reviewers and prevent self-review on demo-deploy and demo-cleanup;
+      GitHub plan must support these protection rules.
+  files:
+    application:
+    - app/main.py
+    - app/requirements.txt
+    - operations/package.py
+    infrastructure:
+    - infra/terraform/main.tf
+    - infra/terraform/variables.tf
+    - infra/terraform/.terraform.lock.hcl
+    pipeline: pipelines/github-actions/deploy.yml
+    smoke_test: tests/smoke.py
+    cleanup: operations/cleanup.md
+    readme: README.md
+outputs:
+- name: application-url
+  kind: url
+  description: URL verified by the post-deployment HTTP test.
+- name: health-check
+  kind: health_evidence
+  description: HTTP test result bound to the approved commit.
+lifecycle:
+  cost_assumptions: One Linux B1 App Service plan per instance, plus shared state
+    storage. Pricing depends on region and runtime; this package has no verified currency
+    estimate.
+  billable_resources:
+  - Azure App Service Plan
+  - state storage
+  - application logs
+  suggested_ttl_hours: 8
+  cleanup_policy: explicit_approval
+  preserve:
+  - Shared state backend
+  - resources not owned by the demo instance
+  recovery: If deployment or health fails after apply, inspect evidence and run a
+    new plan at the intended commit. Cleanup requires a separate approved destroy
+    run. Never remove the shared backend.

@@ -1,0 +1,421 @@
+{
+  "$defs": {
+    "Files": {
+      "additionalProperties": false,
+      "properties": {
+        "application": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 200,
+          "minItems": 1,
+          "title": "Application",
+          "type": "array"
+        },
+        "infrastructure": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 200,
+          "minItems": 1,
+          "title": "Infrastructure",
+          "type": "array"
+        },
+        "pipeline": {
+          "title": "Pipeline",
+          "type": "string"
+        },
+        "smoke_test": {
+          "title": "Smoke Test",
+          "type": "string"
+        },
+        "cleanup": {
+          "title": "Cleanup",
+          "type": "string"
+        },
+        "readme": {
+          "title": "Readme",
+          "type": "string"
+        }
+      },
+      "required": [
+        "application",
+        "infrastructure",
+        "pipeline",
+        "smoke_test",
+        "cleanup",
+        "readme"
+      ],
+      "title": "Files",
+      "type": "object"
+    },
+    "Lifecycle": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_assumptions": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Cost Assumptions",
+          "type": "string"
+        },
+        "billable_resources": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Billable Resources",
+          "type": "array"
+        },
+        "suggested_ttl_hours": {
+          "maximum": 8760,
+          "minimum": 1,
+          "title": "Suggested Ttl Hours",
+          "type": "integer"
+        },
+        "cleanup_policy": {
+          "const": "explicit_approval",
+          "default": "explicit_approval",
+          "title": "Cleanup Policy",
+          "type": "string"
+        },
+        "preserve": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Preserve",
+          "type": "array"
+        },
+        "recovery": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Recovery",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cost_assumptions",
+        "billable_resources",
+        "suggested_ttl_hours",
+        "recovery"
+      ],
+      "title": "Lifecycle",
+      "type": "object"
+    },
+    "Output": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9-]{0,95}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "url",
+            "resource_id",
+            "image_digest",
+            "health_evidence"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "description"
+      ],
+      "title": "Output",
+      "type": "object"
+    },
+    "Parameter": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "string",
+            "integer",
+            "boolean",
+            "credential_reference"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "choices": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "maxItems": 100,
+          "title": "Choices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "kind"
+      ],
+      "title": "Parameter",
+      "type": "object"
+    },
+    "Requirements": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "items": {
+            "enum": [
+              "plan",
+              "deploy",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "tools": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "maxProperties": 30,
+          "minProperties": 1,
+          "title": "Tools",
+          "type": "object"
+        },
+        "prerequisites": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Prerequisites",
+          "type": "array"
+        }
+      },
+      "required": [
+        "capabilities",
+        "tools"
+      ],
+      "title": "Requirements",
+      "type": "object"
+    },
+    "Variant": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "cloud": {
+          "enum": [
+            "azure",
+            "aws"
+          ],
+          "title": "Cloud",
+          "type": "string"
+        },
+        "runtime": {
+          "enum": [
+            "azure_web_app",
+            "aws_lambda",
+            "kubernetes_existing",
+            "aks",
+            "eks"
+          ],
+          "title": "Runtime",
+          "type": "string"
+        },
+        "iac_engine": {
+          "enum": [
+            "terraform",
+            "bicep",
+            "aws_cdk"
+          ],
+          "title": "Iac Engine",
+          "type": "string"
+        },
+        "repository_provider": {
+          "enum": [
+            "github",
+            "azure_repos"
+          ],
+          "title": "Repository Provider",
+          "type": "string"
+        },
+        "cicd_provider": {
+          "enum": [
+            "github_actions",
+            "azure_pipelines"
+          ],
+          "title": "Cicd Provider",
+          "type": "string"
+        },
+        "requirements": {
+          "$ref": "#/$defs/Requirements"
+        },
+        "files": {
+          "$ref": "#/$defs/Files"
+        }
+      },
+      "required": [
+        "id",
+        "cloud",
+        "runtime",
+        "iac_engine",
+        "repository_provider",
+        "cicd_provider",
+        "requirements",
+        "files"
+      ],
+      "title": "Variant",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9-]{0,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$",
+      "title": "Version",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 160,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "owner": {
+      "maxLength": 160,
+      "minLength": 1,
+      "title": "Owner",
+      "type": "string"
+    },
+    "status": {
+      "default": "draft",
+      "enum": [
+        "draft",
+        "candidate"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "parameters": {
+      "items": {
+        "$ref": "#/$defs/Parameter"
+      },
+      "maxItems": 100,
+      "title": "Parameters",
+      "type": "array"
+    },
+    "variants": {
+      "items": {
+        "$ref": "#/$defs/Variant"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Variants",
+      "type": "array"
+    },
+    "outputs": {
+      "items": {
+        "$ref": "#/$defs/Output"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Outputs",
+      "type": "array"
+    },
+    "lifecycle": {
+      "$ref": "#/$defs/Lifecycle"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "name",
+    "description",
+    "owner",
+    "variants",
+    "outputs",
+    "lifecycle"
+  ],
+  "title": "ApplicationTemplate",
+  "type": "object"
+}

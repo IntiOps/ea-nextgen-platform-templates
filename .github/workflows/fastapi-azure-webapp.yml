@@ -1,0 +1,187 @@
+name: FastAPI Azure Web App demo
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Plan, deploy or destroy this demo instance
+        type: choice
+        options: [plan, deploy, destroy]
+        default: plan
+      instance:
+        description: Unique demo name (3–24 lowercase letters, digits or hyphens)
+        required: true
+        type: string
+      location:
+        description: Azure region
+        default: westeurope
+        type: string
+      confirmation:
+        description: For cleanup, type destroy followed by the exact instance name
+        default: ''
+        type: string
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: fastapi-demo-${{ inputs.instance }}
+  cancel-in-progress: false
+env:
+  PACKAGE_ROOT: templates/azure/app-service/python-fastapi
+  ARM_USE_OIDC: 'true'
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_owner_id: ${{ github.repository_id }}
+  TF_VAR_instance: ${{ inputs.instance }}
+  TF_VAR_location: ${{ inputs.location }}
+  TF_STATE_RESOURCE_GROUP: ${{ vars.TF_STATE_RESOURCE_GROUP }}
+  TF_STATE_STORAGE_ACCOUNT: ${{ vars.TF_STATE_STORAGE_ACCOUNT }}
+  TF_STATE_CONTAINER: ${{ vars.TF_STATE_CONTAINER }}
+  DEMO_OPERATION: ${{ inputs.operation }}
+  DEMO_CONFIRMATION: ${{ inputs.confirmation }}
+  TF_IN_AUTOMATION: 'true'
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: demo-plan
+    timeout-minutes: 30
+    outputs:
+      context_digest: ${{ steps.evidence.outputs.digest }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.14.9
+          terraform_wrapper: false
+      - name: Validate inputs and source
+        run: python "$PACKAGE_ROOT/operations/context.py" preflight
+      - name: Test application and delivery guards
+        run: |
+          python -m pip install -r "$PACKAGE_ROOT/app/requirements.txt" -r "$PACKAGE_ROOT/tests/requirements.txt"
+          python -m pytest "$PACKAGE_ROOT/tests" -q
+      - name: Verify native approval rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python "$PACKAGE_ROOT/operations/approval.py"
+      - uses: azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Verify cloud subscription
+        shell: bash
+        run: test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
+      - name: Create saved plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python "$PACKAGE_ROOT/operations/package.py" --revision "$GITHUB_SHA" --output evidence/application.zip
+          cd "$PACKAGE_ROOT/infra/terraform"
+          bash ../../operations/init.sh
+          terraform fmt -check
+          terraform validate
+          extra=()
+          if [ "$DEMO_OPERATION" = destroy ]; then extra=(-destroy); fi
+          terraform plan -input=false -lock-timeout=5m "${extra[@]}" -out="$GITHUB_WORKSPACE/evidence/tfplan"
+          terraform show -json "$GITHUB_WORKSPACE/evidence/tfplan" > "$RUNNER_TEMP/demo-plan.json"
+          python ../../operations/check_plan.py "$RUNNER_TEMP/demo-plan.json"
+          rm "$RUNNER_TEMP/demo-plan.json"
+          terraform show -no-color "$GITHUB_WORKSPACE/evidence/tfplan" > "$GITHUB_WORKSPACE/evidence/plan.txt"
+      - name: Bind plan and application to context
+        id: evidence
+        shell: bash
+        run: |
+          python "$PACKAGE_ROOT/operations/context.py" save --root evidence
+          python -c 'import hashlib,os,pathlib; p=pathlib.Path("evidence/context.json"); open(os.environ["GITHUB_OUTPUT"],"a").write("digest="+hashlib.sha256(p.read_bytes()).hexdigest()+"\n")'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: demo-plan-${{ github.run_id }}
+          path: evidence/
+          retention-days: 3
+          if-no-files-found: error
+  apply:
+    if: inputs.operation != 'plan'
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.operation == 'destroy' && 'demo-cleanup' || 'demo-deploy' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.14.9
+          terraform_wrapper: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: demo-plan-${{ github.run_id }}
+          path: evidence
+      - name: Verify approved context and file hashes
+        env:
+          EXPECTED_DIGEST: ${{ needs.plan.outputs.context_digest }}
+        run: |
+          python -c 'import hashlib,os,pathlib; actual=hashlib.sha256(pathlib.Path("evidence/context.json").read_bytes()).hexdigest(); assert actual == os.environ["EXPECTED_DIGEST"], "Plan context digest mismatch"'
+          python "$PACKAGE_ROOT/operations/context.py" verify --root evidence
+      - name: Verify native approval rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python "$PACKAGE_ROOT/operations/approval.py"
+      - uses: azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Apply the saved plan
+        id: apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
+          cd "$PACKAGE_ROOT/infra/terraform"
+          bash ../../operations/init.sh
+          terraform apply -input=false -lock-timeout=5m "$GITHUB_WORKSPACE/evidence/tfplan"
+          if [ "$DEMO_OPERATION" = destroy ]; then
+            test -z "$(terraform state list)"
+          fi
+          if [ "$DEMO_OPERATION" != destroy ]; then
+            printf 'application_name=%s\n' "$(terraform output -raw application_name)" >> "$GITHUB_OUTPUT"
+            printf 'application_url=%s\n' "$(terraform output -raw application_url)" >> "$GITHUB_OUTPUT"
+            terraform output -json > "$GITHUB_WORKSPACE/evidence/outputs.json"
+          fi
+      - name: Deploy application archive
+        if: inputs.operation == 'deploy'
+        uses: Azure/webapps-deploy@b686016b4de8820a23519503685d8d03fbfa03a6
+        with:
+          app-name: ${{ steps.apply.outputs.application_name }}
+          package: evidence/application.zip
+      - name: Verify deployed revision
+        if: inputs.operation == 'deploy'
+        env:
+          APPLICATION_URL: ${{ steps.apply.outputs.application_url }}
+        run: python "$PACKAGE_ROOT/tests/smoke.py" --url "$APPLICATION_URL" --revision "$GITHUB_SHA" > evidence/health.json
+      - name: Record completion
+        if: success()
+        run: |
+          python -c 'import json,os,pathlib; pathlib.Path("evidence/completion.json").write_text(json.dumps({"operation":os.environ["DEMO_OPERATION"],"revision":os.environ["GITHUB_SHA"],"status":"completed"}))'
+      - name: Preserve execution evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: demo-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/
+          retention-days: 3
+          if-no-files-found: error
