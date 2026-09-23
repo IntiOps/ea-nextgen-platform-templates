@@ -53,3 +53,15 @@ and local transactional queue behavior have functional tests. Both native CI
 validation files run the catalog check. New cloud queue bindings are design-only.
 Platform UI/import integration, managed data/queue adapters and cloud execution
 remain pending; the existing application catalog is unchanged.
+
+## Quality foundation (2026-09-24)
+
+Delivered: profile/evidence contract, fixed local suites, bounded JUnit parser,
+context/freshness checks, offline Sonar/ZAP assessment, and native source-CI report
+publication. `catalog/validation.json` binds App Service, Lambda and request-service
+sources without changing their historical application manifests.
+
+Pending: authenticated provider retrieval, live scanners, SCA/secrets/IaC/image
+security checks, postdeploy operational tests, performance/AI evaluators, platform
+policy inheritance and evidence admission. All generated evidence explicitly denies
+cloud deployment authorization. The source pipeline does not modify cloud credentials.

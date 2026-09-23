@@ -1,0 +1,29 @@
+# Step template; dependencies are installed by the parent pipeline.
+steps:
+- bash: python tools/validate_quality_catalog.py
+  displayName: Validate quality catalog
+- bash: |
+    python components/validation/core/run.py \
+      --commit "$EA_COMMIT" --repository "$EA_REPOSITORY" \
+      --run-id "$EA_RUN_ID" --attempt "$EA_ATTEMPT" --output "$EA_REPORTS"
+  displayName: Execute fixed validation suites
+  env:
+    EA_COMMIT: $(Build.SourceVersion)
+    EA_REPOSITORY: $(Build.Repository.Uri)
+    EA_RUN_ID: $(Build.BuildId)
+    EA_ATTEMPT: $(System.JobAttempt)
+    EA_REPORTS: $(Agent.TempDirectory)/ea-quality-$(Build.BuildId)-$(System.JobAttempt)
+- task: PublishTestResults@2
+  condition: always()
+  inputs:
+    testResultsFormat: JUnit
+    testResultsFiles: '$(Agent.TempDirectory)/ea-quality-$(Build.BuildId)-$(System.JobAttempt)/*.xml'
+    failTaskOnFailedTests: true
+    failTaskOnFailureToPublishResults: true
+    failTaskOnMissingResultsFile: true
+    publishRunAttachments: false
+- task: PublishPipelineArtifact@1
+  condition: always()
+  inputs:
+    targetPath: '$(Agent.TempDirectory)/ea-quality-$(Build.BuildId)-$(System.JobAttempt)'
+    artifact: 'quality-$(Build.BuildId)-$(System.JobAttempt)'

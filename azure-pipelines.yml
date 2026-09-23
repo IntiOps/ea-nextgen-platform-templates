@@ -20,10 +20,10 @@ steps:
     set -euo pipefail
     python -m pip install -r tests/catalog-requirements.txt -r components/lifecycle-finops/requirements.txt -r templates/azure/app-service/python-fastapi/app/requirements.txt -r templates/azure/app-service/python-fastapi/tests/requirements.txt
     python tools/catalog.py validate
-    python -m pytest templates/azure/app-service/python-fastapi/tests tests -q
     az bicep install --version v0.40.2
     az bicep build --file templates/azure/app-service/python-fastapi/infra/bicep/main.bicep --outfile $(Agent.TempDirectory)/app-service.json
   displayName: Validate policy, applications and Bicep
+- template: components/pipelines/azure-pipelines/validate.yml
 - bash: |
     set -euo pipefail
     python -m pip install -r templates/aws/lambda/python-http/infra/cdk-python/requirements.lock.txt

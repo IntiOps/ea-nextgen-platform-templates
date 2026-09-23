@@ -54,3 +54,9 @@ is enabled by merely supplying a lifecycle policy.
 
 See [CATALOG.md](CATALOG.md) for twelve typed blueprints, three source components,
 and local functional demos. Cloud variants and their verification remain separate.
+
+## Quality and security evidence
+
+See [validation foundation](components/validation/README.md) for the source profile,
+context-bound evidence and GitHub/Azure CI components. SonarQube/ZAP support is
+currently offline report assessment; no live scan is implied by catalog presence.

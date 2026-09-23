@@ -47,3 +47,11 @@ are target variants, not an implied Cartesian product of delivered support.
 
 Schemas and this read-only CLI are an additive catalog contract. Historical
 application manifests and their digests must not be rewritten to accommodate it.
+
+## Quality validation catalog
+
+`catalog/validation.json` is an additive index of pinned quality components and
+three source-validation bindings (App Service, Lambda and the local request service).
+It does not extend the old application manifest. Run `python tools/validate_quality_catalog.py`.
+See `components/validation/README.md` for evidence, CI, trust boundaries and pending
+live scanner/platform integration. A source CI pass is not cloud certification.

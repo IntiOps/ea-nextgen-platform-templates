@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "id": "local-source",
+  "phase": "build",
+  "max_age_seconds": 3600,
+  "controls": [
+    {"id": "catalog", "category": "contract-and-functional", "required": true, "min_executed": 1},
+    {"id": "application", "category": "application", "required": true, "min_executed": 1},
+    {"id": "policy", "category": "governance-and-evidence", "required": true, "min_executed": 1}
+  ]
+}

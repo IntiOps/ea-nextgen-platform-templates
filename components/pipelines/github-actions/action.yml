@@ -1,0 +1,29 @@
+name: Validate source and produce quality evidence
+description: Fixed local test suites and context-bound reports; no cloud authorization
+runs:
+  using: composite
+  steps:
+    - name: Validate quality catalog
+      shell: bash
+      run: python tools/validate_quality_catalog.py
+    - name: Execute fixed validation suites
+      shell: bash
+      env:
+        EA_COMMIT: ${{ github.sha }}
+        EA_REPOSITORY: ${{ github.repository }}
+        EA_RUN_ID: ${{ github.run_id }}
+        EA_ATTEMPT: ${{ github.run_attempt }}
+        EA_REPORTS: ${{ runner.temp }}/ea-quality-${{ github.run_id }}-${{ github.run_attempt }}
+      run: |
+        python components/validation/core/run.py \
+          --commit "$EA_COMMIT" --repository "$EA_REPOSITORY" \
+          --run-id "$EA_RUN_ID" --attempt "$EA_ATTEMPT" --output "$EA_REPORTS"
+    - name: Publish validation reports
+      if: ${{ always() }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: quality-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/ea-quality-${{ github.run_id }}-${{ github.run_attempt }}
+        if-no-files-found: error
+        retention-days: 7
+        include-hidden-files: false

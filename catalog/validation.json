@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "kind": "validation_catalog",
+  "deployment_authorized": false,
+  "files": [
+    {
+      "path": "components/pipelines/azure-pipelines/validate.yml",
+      "sha256": "92e55af88cab24d7897db3b6285c0d63535871a0b8308d6c257ebde688ccef21"
+    },
+    {
+      "path": "components/pipelines/github-actions/action.yml",
+      "sha256": "982f8ace9eae1c1f5e6a9e29c56050e331f91b67663f620ad5b1b6134bc3896f"
+    },
+    {
+      "path": "components/validation/README.md",
+      "sha256": "ba50a9539e66b00d739578330aac994802ac9dbf0e2a8452fed20c797d9d1b06"
+    },
+    {
+      "path": "components/validation/core/evidence.py",
+      "sha256": "47d2d07207b84eb2ffa11225ed5c010b055a60cd3fe2ccc03622f0fffdacc06c"
+    },
+    {
+      "path": "components/validation/core/run.py",
+      "sha256": "22275a1b8556dfa442a65a6bbbd4ce6de04902d0745f15ee3db6630f342e6500"
+    },
+    {
+      "path": "components/validation/dast-zap/README.md",
+      "sha256": "f25e9350ca2ce5c30c356480c678546501d496307c1a1d185046e5060b173f72"
+    },
+    {
+      "path": "components/validation/dast-zap/report.py",
+      "sha256": "27840b8adb627f4acdd50b711c1ae0fc1313a3f60ecacd97dcaee190f0a9dfeb"
+    },
+    {
+      "path": "components/validation/profiles/local-source.json",
+      "sha256": "c35a105c6c6233e40f309f5312fb659d1f708f569ff29b61c1c9fd10534bac11"
+    },
+    {
+      "path": "components/validation/sonarqube/README.md",
+      "sha256": "7ab8c35378b679912f24fc90f901ea399f40f256b1298141498797429a60d734"
+    },
+    {
+      "path": "components/validation/sonarqube/report.py",
+      "sha256": "95be8b48866aba524dd92e6dc962c0f307dfae31dc0fd026f5a980c752613238"
+    },
+    {
+      "path": "tools/validate_quality_catalog.py",
+      "sha256": "e8702abe1ad3f6be5c6e8a2acb89761d65b1bff3b308e24d323737a9a65badf8"
+    }
+  ],
+  "bindings": [
+    {
+      "target": "templates/azure/app-service/python-fastapi/template.yaml",
+      "profile": "components/validation/profiles/local-source.json",
+      "mode": "source_validation",
+      "cloud_verified": false
+    },
+    {
+      "target": "templates/aws/lambda/python-http/README.md",
+      "profile": "components/validation/profiles/local-source.json",
+      "mode": "source_validation",
+      "cloud_verified": false
+    },
+    {
+      "target": "components/manifests/request-service.json",
+      "profile": "components/validation/profiles/local-source.json",
+      "mode": "source_validation",
+      "cloud_verified": false
+    }
+  ],
+  "adapters": {
+    "github_actions": "source_ci",
+    "azure_pipelines": "source_ci_services",
+    "sonarqube": "offline_report_only",
+    "zap": "offline_report_only"
+  },
+  "pending": [
+    "live_sonar_authentication",
+    "dast_execution",
+    "sca_and_secret_scans",
+    "iac_image_security_scans",
+    "operational_recovery",
+    "performance",
+    "ai_evaluation",
+    "platform_evidence_ingestion"
+  ]
+}
