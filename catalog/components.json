@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "kind": "component_catalog",
+  "entries": [
+    {
+      "id": "fastapi-health",
+      "path": "components/manifests/fastapi-health.json"
+    },
+    {
+      "id": "lambda-health",
+      "path": "components/manifests/lambda-health.json"
+    },
+    {
+      "id": "request-service",
+      "path": "components/manifests/request-service.json"
+    }
+  ]
+}

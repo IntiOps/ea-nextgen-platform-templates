@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "modular-business-app",
+  "version": "0.1.0",
+  "name": "Modular business application",
+  "purpose": "Express a system as modules with explicit dependencies.",
+  "scope": {
+    "included": [
+      "system",
+      "container",
+      "orders",
+      "catalog"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "system",
+      "type": "software_system",
+      "name": "System"
+    },
+    {
+      "key": "container",
+      "type": "container",
+      "name": "Container"
+    },
+    {
+      "key": "orders",
+      "type": "component",
+      "name": "Orders"
+    },
+    {
+      "key": "catalog",
+      "type": "component",
+      "name": "Catalog"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "system",
+      "type": "software_system_contains_container",
+      "target": "container"
+    },
+    {
+      "source": "container",
+      "type": "container_contains_component",
+      "target": "orders"
+    },
+    {
+      "source": "container",
+      "type": "container_contains_component",
+      "target": "catalog"
+    },
+    {
+      "source": "orders",
+      "type": "component_depends_on_component",
+      "target": "catalog"
+    }
+  ],
+  "viewpoints": [
+    "container",
+    "component"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [],
+  "deployable": false
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "kind": "reusable_component",
+  "id": "fastapi-health",
+  "version": "0.1.0",
+  "name": "FastAPI source revision and health",
+  "deployable": false,
+  "files": [
+    {
+      "path": "templates/azure/app-service/python-fastapi/app/main.py",
+      "sha256": "2331832c6073f5a03abaea7159e6bad4fe4a57770d23ef1d9335771a9a73eafc"
+    },
+    {
+      "path": "templates/azure/app-service/python-fastapi/app/requirements.txt",
+      "sha256": "3b4f6bfd843af90d11867a0e5ed4ccb0936645921504a36cb41f52ccd3ccb6e2"
+    }
+  ]
+}

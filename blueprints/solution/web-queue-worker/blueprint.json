@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "web-queue-worker",
+  "version": "0.1.0",
+  "name": "Web queue worker",
+  "purpose": "Submit work, consume asynchronously and inspect results.",
+  "scope": {
+    "included": [
+      "api",
+      "worker",
+      "message",
+      "database"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "api",
+      "type": "application",
+      "name": "Api"
+    },
+    {
+      "key": "worker",
+      "type": "service",
+      "name": "Worker"
+    },
+    {
+      "key": "message",
+      "type": "event",
+      "name": "Message"
+    },
+    {
+      "key": "database",
+      "type": "database",
+      "name": "Database"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "api",
+      "type": "application_publishes_event",
+      "target": "message"
+    },
+    {
+      "source": "worker",
+      "type": "service_consumes_event",
+      "target": "message"
+    },
+    {
+      "source": "worker",
+      "type": "service_writes_to_database",
+      "target": "database"
+    },
+    {
+      "source": "api",
+      "type": "application_reads_from_database",
+      "target": "database"
+    }
+  ],
+  "viewpoints": [
+    "integration",
+    "deployment"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [
+    "A physical queue and dead-letter route need additional typed bindings; event is a message contract, not a queue."
+  ],
+  "deployable": false
+}

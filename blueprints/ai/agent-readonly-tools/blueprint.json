@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "agent-readonly-tools",
+  "version": "0.1.0",
+  "name": "Agent with read-only tools",
+  "purpose": "Associate a business capability with a model and explicitly scoped tools.",
+  "scope": {
+    "included": [
+      "capability",
+      "agent",
+      "model",
+      "tools"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "capability",
+      "type": "capability",
+      "name": "Capability"
+    },
+    {
+      "key": "agent",
+      "type": "agent",
+      "name": "Agent"
+    },
+    {
+      "key": "model",
+      "type": "ai_model",
+      "name": "Model"
+    },
+    {
+      "key": "tools",
+      "type": "mcp_server",
+      "name": "Tools"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "agent",
+      "type": "agent_implements_capability",
+      "target": "capability"
+    },
+    {
+      "source": "agent",
+      "type": "agent_uses_model",
+      "target": "model"
+    },
+    {
+      "source": "agent",
+      "type": "agent_uses_tool",
+      "target": "tools"
+    }
+  ],
+  "viewpoints": [
+    "integration"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [
+    "Read-only tool permissions require a runtime policy and enforcement; graph edges do not grant access."
+  ],
+  "deployable": false
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "kind": "reusable_component",
+  "id": "lambda-health",
+  "version": "0.1.0",
+  "name": "Lambda source revision response",
+  "deployable": false,
+  "files": [
+    {
+      "path": "templates/aws/lambda/python-http/app/handler.py",
+      "sha256": "e5c0aa1269c56456b85342c07fdc2b1eb08f057c3fc29140df8fc1e763a764dc"
+    }
+  ]
+}

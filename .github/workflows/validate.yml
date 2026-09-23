@@ -16,10 +16,12 @@ jobs:
         with:
           terraform_version: 1.14.9
           terraform_wrapper: false
+      - name: Validate architecture and component catalog
+        run: python tools/catalog.py validate
       - name: Test application and guards
         run: |
           python -m pip install -r templates/azure/app-service/python-fastapi/app/requirements.txt -r templates/azure/app-service/python-fastapi/tests/requirements.txt
-          python -m pip install -r components/lifecycle-finops/requirements.txt
+          python -m pip install -r tests/catalog-requirements.txt -r components/lifecycle-finops/requirements.txt
           python -m pytest templates/azure/app-service/python-fastapi/tests tests -q
       - name: Validate infrastructure without a cloud backend
         working-directory: templates/azure/app-service/python-fastapi/infra/terraform

@@ -44,3 +44,12 @@ approval, apply, health and cleanup contracts are implemented and verified.
    then approve a sandbox budget and lifetime before cloud execution.
 
 No cloud resources were created during this source-validation delivery.
+
+## Architecture catalog expansion (2026-09-24)
+
+Twelve blueprint manifests, three content-pinned components, and three demo
+compositions now have a read-only list/export/validation CLI. Request persistence
+and local transactional queue behavior have functional tests. Both native CI
+validation files run the catalog check. New cloud queue bindings are design-only.
+Platform UI/import integration, managed data/queue adapters and cloud execution
+remain pending; the existing application catalog is unchanged.

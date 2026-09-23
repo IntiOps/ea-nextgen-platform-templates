@@ -49,3 +49,8 @@ Environment profiles and public-price estimation live in
 [components/lifecycle-finops](components/lifecycle-finops). Estimates explicitly
 block approval when non-compute costs are still missing; no automated scheduler
 is enabled by merely supplying a lifecycle policy.
+
+## Architecture and reusable code
+
+See [CATALOG.md](CATALOG.md) for twelve typed blueprints, three source components,
+and local functional demos. Cloud variants and their verification remain separate.

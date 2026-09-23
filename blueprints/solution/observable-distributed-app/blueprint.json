@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "observable-distributed-app",
+  "version": "0.1.0",
+  "name": "Observable distributed application",
+  "purpose": "Trace a request across components using shared correlation.",
+  "scope": {
+    "included": [
+      "system",
+      "api",
+      "backend"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "system",
+      "type": "software_system",
+      "name": "System"
+    },
+    {
+      "key": "api",
+      "type": "container",
+      "name": "Api"
+    },
+    {
+      "key": "backend",
+      "type": "container",
+      "name": "Backend"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "system",
+      "type": "software_system_contains_container",
+      "target": "api"
+    },
+    {
+      "source": "system",
+      "type": "software_system_contains_container",
+      "target": "backend"
+    },
+    {
+      "source": "api",
+      "type": "container_calls_container",
+      "target": "backend"
+    }
+  ],
+  "viewpoints": [
+    "container",
+    "deployment"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [
+    "Telemetry runtime and collectors need implementation bindings."
+  ],
+  "deployable": false
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "rag-knowledge-assistant",
+  "version": "0.1.0",
+  "name": "Knowledge assistant with retrieval",
+  "purpose": "Design retrieval, model interaction and evaluation before connecting a model.",
+  "scope": {
+    "included": [
+      "agent",
+      "model",
+      "prompt",
+      "corpus"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "agent",
+      "type": "agent",
+      "name": "Agent"
+    },
+    {
+      "key": "model",
+      "type": "ai_model",
+      "name": "Model"
+    },
+    {
+      "key": "prompt",
+      "type": "prompt",
+      "name": "Prompt"
+    },
+    {
+      "key": "corpus",
+      "type": "retrieval_corpus",
+      "name": "Corpus"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "agent",
+      "type": "agent_uses_model",
+      "target": "model"
+    },
+    {
+      "source": "prompt",
+      "type": "prompt_used_by_model",
+      "target": "model"
+    }
+  ],
+  "viewpoints": [
+    "container"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [
+    "Corpus retrieval and evaluation relationships are not yet defined in the platform metamodel.",
+    "Do not infer that dataset training is equivalent to retrieval."
+  ],
+  "deployable": false
+}

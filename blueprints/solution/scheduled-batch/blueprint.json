@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "scheduled-batch",
+  "version": "0.1.0",
+  "name": "Scheduled batch processing",
+  "purpose": "Process data in restartable batches with checkpoints.",
+  "scope": {
+    "included": [
+      "worker",
+      "database",
+      "event"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "worker",
+      "type": "service",
+      "name": "Worker"
+    },
+    {
+      "key": "database",
+      "type": "database",
+      "name": "Database"
+    },
+    {
+      "key": "event",
+      "type": "event",
+      "name": "Event"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "worker",
+      "type": "service_consumes_event",
+      "target": "event"
+    },
+    {
+      "source": "worker",
+      "type": "service_reads_from_database",
+      "target": "database"
+    },
+    {
+      "source": "worker",
+      "type": "service_writes_to_database",
+      "target": "database"
+    }
+  ],
+  "viewpoints": [
+    "integration"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [
+    "Scheduler is an implementation binding; this model does not enable scheduling."
+  ],
+  "deployable": false
+}

@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "event-integration",
+  "version": "0.1.0",
+  "name": "Event integration",
+  "purpose": "Connect producer and consumer through a versioned message contract.",
+  "scope": {
+    "included": [
+      "producer",
+      "consumer",
+      "event"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "producer",
+      "type": "application",
+      "name": "Producer"
+    },
+    {
+      "key": "consumer",
+      "type": "application",
+      "name": "Consumer"
+    },
+    {
+      "key": "event",
+      "type": "event",
+      "name": "Event"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "producer",
+      "type": "application_publishes_event",
+      "target": "event"
+    },
+    {
+      "source": "consumer",
+      "type": "application_consumes_event",
+      "target": "event"
+    }
+  ],
+  "viewpoints": [
+    "integration"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [
+    "Outbox and broker bindings must specify delivery, retry and deduplication semantics."
+  ],
+  "deployable": false
+}

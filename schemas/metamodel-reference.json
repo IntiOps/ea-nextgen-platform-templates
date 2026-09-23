@@ -1,0 +1,625 @@
+{
+  "schema_version": "1.0",
+  "source": "ea-nextgen-platform working-tree catalog 2026-09-24",
+  "types": {
+    "ai_model": {
+      "name": "AI Model",
+      "layer": "ai"
+    },
+    "dataset": {
+      "name": "Dataset",
+      "layer": "ai"
+    },
+    "feature_store": {
+      "name": "Feature Store",
+      "layer": "ai"
+    },
+    "model_registry": {
+      "name": "Model Registry",
+      "layer": "ai"
+    },
+    "ml_pipeline": {
+      "name": "ML Pipeline",
+      "layer": "ai"
+    },
+    "prompt": {
+      "name": "Prompt",
+      "layer": "ai"
+    },
+    "retrieval_corpus": {
+      "name": "Retrieval Corpus",
+      "layer": "ai"
+    },
+    "cloud_provider": {
+      "name": "Cloud Provider",
+      "layer": "cloud"
+    },
+    "cloud_region": {
+      "name": "Cloud Region",
+      "layer": "cloud"
+    },
+    "cloud_zone": {
+      "name": "Cloud Zone",
+      "layer": "cloud"
+    },
+    "edge_location": {
+      "name": "Edge Location",
+      "layer": "cloud"
+    },
+    "cloud_service": {
+      "name": "Cloud Service",
+      "layer": "cloud"
+    },
+    "actor": {
+      "name": "Actor",
+      "layer": "business"
+    },
+    "role": {
+      "name": "Role",
+      "layer": "business"
+    },
+    "policy": {
+      "name": "Policy",
+      "layer": "governance"
+    },
+    "domain": {
+      "name": "Domain",
+      "layer": "business"
+    },
+    "capability": {
+      "name": "Capability",
+      "layer": "business"
+    },
+    "value_stream": {
+      "name": "Value Stream",
+      "layer": "business"
+    },
+    "process": {
+      "name": "Process",
+      "layer": "business"
+    },
+    "function": {
+      "name": "Function",
+      "layer": "business"
+    },
+    "service": {
+      "name": "Service",
+      "layer": "business"
+    },
+    "external_system": {
+      "name": "External System",
+      "layer": "application"
+    },
+    "software_system": {
+      "name": "Software System",
+      "layer": "application"
+    },
+    "application": {
+      "name": "Application",
+      "layer": "application"
+    },
+    "container": {
+      "name": "Container",
+      "layer": "deployment"
+    },
+    "application_component": {
+      "name": "Application Component",
+      "layer": "application"
+    },
+    "component": {
+      "name": "Component",
+      "layer": "application"
+    },
+    "api": {
+      "name": "API",
+      "layer": "integration"
+    },
+    "database": {
+      "name": "Database",
+      "layer": "technology"
+    },
+    "data_entity": {
+      "name": "Data Entity",
+      "layer": "data"
+    },
+    "data_store": {
+      "name": "Data Store",
+      "layer": "data"
+    },
+    "technology": {
+      "name": "Technology",
+      "layer": "technology"
+    },
+    "platform_service": {
+      "name": "Platform Service",
+      "layer": "technology"
+    },
+    "service_instance": {
+      "name": "Service Instance",
+      "layer": "deployment"
+    },
+    "workload": {
+      "name": "Workload",
+      "layer": "deployment"
+    },
+    "environment": {
+      "name": "Environment",
+      "layer": "deployment"
+    },
+    "cloud_resource": {
+      "name": "Cloud Resource",
+      "layer": "cloud"
+    },
+    "repo": {
+      "name": "Repository",
+      "layer": "cmdb"
+    },
+    "repository": {
+      "name": "Repository",
+      "layer": "application"
+    },
+    "event": {
+      "name": "Event",
+      "layer": "integration"
+    },
+    "cloud_account": {
+      "name": "Cloud Account",
+      "layer": "cloud"
+    },
+    "cluster": {
+      "name": "Cluster",
+      "layer": "technology"
+    },
+    "infrastructure_component": {
+      "name": "Infrastructure Component",
+      "layer": "technology"
+    },
+    "team": {
+      "name": "Team",
+      "layer": "business"
+    },
+    "agent": {
+      "name": "Agent",
+      "layer": "ai"
+    },
+    "mcp_server": {
+      "name": "MCP Server",
+      "layer": "ai"
+    },
+    "cost_object": {
+      "name": "Cost Object",
+      "layer": "finops"
+    },
+    "carbon_footprint": {
+      "name": "Carbon Footprint",
+      "layer": "finops"
+    },
+    "unit_economics": {
+      "name": "Unit Economics",
+      "layer": "finops"
+    },
+    "segregation_of_duties": {
+      "name": "Segregation of Duties",
+      "layer": "governance"
+    },
+    "signal": {
+      "name": "Observability Signal",
+      "layer": "observability"
+    },
+    "slo": {
+      "name": "Service Level Objective",
+      "layer": "observability"
+    },
+    "incident": {
+      "name": "Incident",
+      "layer": "observability"
+    },
+    "runbook": {
+      "name": "Runbook",
+      "layer": "observability"
+    },
+    "identity": {
+      "name": "Identity",
+      "layer": "security"
+    },
+    "risk": {
+      "name": "Risk",
+      "layer": "security"
+    },
+    "control": {
+      "name": "Control",
+      "layer": "security"
+    },
+    "evidence": {
+      "name": "Evidence",
+      "layer": "security"
+    },
+    "exception": {
+      "name": "Exception",
+      "layer": "security"
+    }
+  },
+  "relationships": {
+    "model_trained_on_dataset": {
+      "source": "ai_model",
+      "target": "dataset",
+      "verb": "trained_on"
+    },
+    "model_served_by_pipeline": {
+      "source": "ai_model",
+      "target": "ml_pipeline",
+      "verb": "served_by"
+    },
+    "model_registered_in_registry": {
+      "source": "ai_model",
+      "target": "model_registry",
+      "verb": "registered_in"
+    },
+    "feature_store_feeds_model": {
+      "source": "feature_store",
+      "target": "ai_model",
+      "verb": "feeds"
+    },
+    "prompt_used_by_model": {
+      "source": "prompt",
+      "target": "ai_model",
+      "verb": "used_by"
+    },
+    "dataset_stored_in_store": {
+      "source": "dataset",
+      "target": "data_store",
+      "verb": "stored_in"
+    },
+    "resource_deployed_in_region": {
+      "source": "cloud_resource",
+      "target": "cloud_region",
+      "verb": "deployed_in"
+    },
+    "service_runs_in_zone": {
+      "source": "cloud_service",
+      "target": "cloud_zone",
+      "verb": "runs_in"
+    },
+    "edge_location_hosts_service": {
+      "source": "edge_location",
+      "target": "cloud_service",
+      "verb": "hosts"
+    },
+    "role_assigned_to_actor": {
+      "source": "role",
+      "target": "actor",
+      "verb": "assigned_to"
+    },
+    "policy_governs_application": {
+      "source": "policy",
+      "target": "application",
+      "verb": "governs"
+    },
+    "service_implements_capability": {
+      "source": "service",
+      "target": "capability",
+      "verb": "implements"
+    },
+    "actor_uses_software_system": {
+      "source": "actor",
+      "target": "software_system",
+      "verb": "uses"
+    },
+    "software_system_serves_actor": {
+      "source": "software_system",
+      "target": "actor",
+      "verb": "serves"
+    },
+    "software_system_depends_on_external_system": {
+      "source": "software_system",
+      "target": "external_system",
+      "verb": "depends_on"
+    },
+    "external_system_depends_on_software_system": {
+      "source": "external_system",
+      "target": "software_system",
+      "verb": "depends_on"
+    },
+    "software_system_depends_on_software_system": {
+      "source": "software_system",
+      "target": "software_system",
+      "verb": "depends_on"
+    },
+    "software_system_contains_container": {
+      "source": "software_system",
+      "target": "container",
+      "verb": "contains"
+    },
+    "application_supports_service": {
+      "source": "application",
+      "target": "service",
+      "verb": "supports"
+    },
+    "actor_uses_container": {
+      "source": "actor",
+      "target": "container",
+      "verb": "uses"
+    },
+    "container_serves_actor": {
+      "source": "container",
+      "target": "actor",
+      "verb": "serves"
+    },
+    "container_contains_component": {
+      "source": "container",
+      "target": "component",
+      "verb": "contains"
+    },
+    "container_calls_container": {
+      "source": "container",
+      "target": "container",
+      "verb": "calls"
+    },
+    "container_depends_on_external_system": {
+      "source": "container",
+      "target": "external_system",
+      "verb": "depends_on"
+    },
+    "external_system_depends_on_container": {
+      "source": "external_system",
+      "target": "container",
+      "verb": "depends_on"
+    },
+    "container_depends_on_software_system": {
+      "source": "container",
+      "target": "software_system",
+      "verb": "depends_on"
+    },
+    "software_system_depends_on_container": {
+      "source": "software_system",
+      "target": "container",
+      "verb": "depends_on"
+    },
+    "container_consumes_api": {
+      "source": "container",
+      "target": "api",
+      "verb": "consumes"
+    },
+    "container_uses_database": {
+      "source": "container",
+      "target": "database",
+      "verb": "uses"
+    },
+    "component_depends_on_component": {
+      "source": "component",
+      "target": "component",
+      "verb": "depends_on"
+    },
+    "component_uses_api": {
+      "source": "component",
+      "target": "api",
+      "verb": "uses"
+    },
+    "component_uses_database": {
+      "source": "component",
+      "target": "database",
+      "verb": "uses"
+    },
+    "data_entity_used_by_application": {
+      "source": "data_entity",
+      "target": "application",
+      "verb": "used_by"
+    },
+    "technology_hosts_application": {
+      "source": "technology",
+      "target": "application",
+      "verb": "hosts"
+    },
+    "workload_runs_application": {
+      "source": "workload",
+      "target": "application",
+      "verb": "runs"
+    },
+    "repo_contains_application": {
+      "source": "repo",
+      "target": "application",
+      "verb": "contains"
+    },
+    "capability_owned_by_team": {
+      "source": "capability",
+      "target": "team",
+      "verb": "owned_by"
+    },
+    "application_owned_by_team": {
+      "source": "application",
+      "target": "team",
+      "verb": "owned_by"
+    },
+    "service_owned_by_team": {
+      "source": "service",
+      "target": "team",
+      "verb": "owned_by"
+    },
+    "repository_owned_by_team": {
+      "source": "repository",
+      "target": "team",
+      "verb": "owned_by"
+    },
+    "repository_implements_service": {
+      "source": "repository",
+      "target": "service",
+      "verb": "implements"
+    },
+    "repository_implements_application": {
+      "source": "repository",
+      "target": "application",
+      "verb": "implements"
+    },
+    "service_deployed_to_cluster": {
+      "source": "service",
+      "target": "cluster",
+      "verb": "deployed_to"
+    },
+    "application_deployed_to_cluster": {
+      "source": "application",
+      "target": "cluster",
+      "verb": "deployed_to"
+    },
+    "cluster_deployed_to_cloud_account": {
+      "source": "cluster",
+      "target": "cloud_account",
+      "verb": "deployed_to"
+    },
+    "service_reads_from_database": {
+      "source": "service",
+      "target": "database",
+      "verb": "reads_from"
+    },
+    "service_writes_to_database": {
+      "source": "service",
+      "target": "database",
+      "verb": "writes_to"
+    },
+    "application_reads_from_database": {
+      "source": "application",
+      "target": "database",
+      "verb": "reads_from"
+    },
+    "application_writes_to_database": {
+      "source": "application",
+      "target": "database",
+      "verb": "writes_to"
+    },
+    "service_publishes_event": {
+      "source": "service",
+      "target": "event",
+      "verb": "publishes"
+    },
+    "service_consumes_event": {
+      "source": "service",
+      "target": "event",
+      "verb": "consumes"
+    },
+    "application_publishes_event": {
+      "source": "application",
+      "target": "event",
+      "verb": "publishes"
+    },
+    "application_consumes_event": {
+      "source": "application",
+      "target": "event",
+      "verb": "consumes"
+    },
+    "capability_supports_capability": {
+      "source": "capability",
+      "target": "capability",
+      "verb": "supports"
+    },
+    "agent_uses_model": {
+      "source": "agent",
+      "target": "ai_model",
+      "verb": "uses_model"
+    },
+    "agent_uses_tool": {
+      "source": "agent",
+      "target": "mcp_server",
+      "verb": "uses_tool"
+    },
+    "agent_implements_capability": {
+      "source": "agent",
+      "target": "capability",
+      "verb": "implements"
+    },
+    "service_satisfies_policy": {
+      "source": "service",
+      "target": "policy",
+      "verb": "satisfies"
+    },
+    "service_violates_policy": {
+      "source": "service",
+      "target": "policy",
+      "verb": "violates"
+    },
+    "application_satisfies_policy": {
+      "source": "application",
+      "target": "policy",
+      "verb": "satisfies"
+    },
+    "application_violates_policy": {
+      "source": "application",
+      "target": "policy",
+      "verb": "violates"
+    },
+    "cluster_depends_on_infrastructure_component": {
+      "source": "cluster",
+      "target": "infrastructure_component",
+      "verb": "depends_on"
+    },
+    "service_exposes_api": {
+      "source": "service",
+      "target": "api",
+      "verb": "exposes"
+    },
+    "cost_object_costs_application": {
+      "source": "cost_object",
+      "target": "application",
+      "verb": "costs"
+    },
+    "cost_object_emits_carbon": {
+      "source": "cost_object",
+      "target": "carbon_footprint",
+      "verb": "emits"
+    },
+    "cost_object_has_unit_economics": {
+      "source": "cost_object",
+      "target": "unit_economics",
+      "verb": "has"
+    },
+    "policy_enforces_sod": {
+      "source": "policy",
+      "target": "segregation_of_duties",
+      "verb": "enforces"
+    },
+    "signal_monitors_workload": {
+      "source": "signal",
+      "target": "workload",
+      "verb": "monitors"
+    },
+    "slo_targets_application": {
+      "source": "slo",
+      "target": "application",
+      "verb": "targets"
+    },
+    "incident_affects_application": {
+      "source": "incident",
+      "target": "application",
+      "verb": "affects"
+    },
+    "runbook_resolves_incident": {
+      "source": "runbook",
+      "target": "incident",
+      "verb": "resolves"
+    },
+    "control_mitigates_risk": {
+      "source": "control",
+      "target": "risk",
+      "verb": "mitigates"
+    },
+    "evidence_supports_control": {
+      "source": "evidence",
+      "target": "control",
+      "verb": "supports"
+    },
+    "exception_applies_to_policy": {
+      "source": "exception",
+      "target": "policy",
+      "verb": "applies_to"
+    }
+  },
+  "viewpoints": [
+    "enterprise_landscape",
+    "capability_map",
+    "value_stream",
+    "system_context",
+    "container",
+    "component",
+    "deployment",
+    "integration",
+    "cmdb_service_map"
+  ]
+}

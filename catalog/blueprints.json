@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "kind": "blueprint_catalog",
+  "entries": [
+    {
+      "id": "enterprise-capability-map",
+      "path": "blueprints/enterprise/enterprise-capability-map/blueprint.json"
+    },
+    {
+      "id": "web-api-basic",
+      "path": "blueprints/solution/web-api-basic/blueprint.json"
+    },
+    {
+      "id": "web-api-data",
+      "path": "blueprints/solution/web-api-data/blueprint.json"
+    },
+    {
+      "id": "web-queue-worker",
+      "path": "blueprints/solution/web-queue-worker/blueprint.json"
+    },
+    {
+      "id": "serverless-http",
+      "path": "blueprints/solution/serverless-http/blueprint.json"
+    },
+    {
+      "id": "kubernetes-existing-api",
+      "path": "blueprints/solution/kubernetes-existing-api/blueprint.json"
+    },
+    {
+      "id": "scheduled-batch",
+      "path": "blueprints/solution/scheduled-batch/blueprint.json"
+    },
+    {
+      "id": "modular-business-app",
+      "path": "blueprints/solution/modular-business-app/blueprint.json"
+    },
+    {
+      "id": "event-integration",
+      "path": "blueprints/solution/event-integration/blueprint.json"
+    },
+    {
+      "id": "rag-knowledge-assistant",
+      "path": "blueprints/ai/rag-knowledge-assistant/blueprint.json"
+    },
+    {
+      "id": "agent-readonly-tools",
+      "path": "blueprints/ai/agent-readonly-tools/blueprint.json"
+    },
+    {
+      "id": "observable-distributed-app",
+      "path": "blueprints/solution/observable-distributed-app/blueprint.json"
+    }
+  ]
+}

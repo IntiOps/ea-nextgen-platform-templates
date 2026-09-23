@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "kind": "implementation_binding_proposal",
+  "blueprint": "web-queue-worker",
+  "component": "request-service",
+  "component_digest": "d879679c8a5af13700c75d7add428f9ffe5c005ed1f661f857d61e2bc6b0fad8",
+  "cloud": "aws",
+  "ecosystem": "lambda",
+  "status": "design_only",
+  "deployable": false,
+  "missing": [
+    "Production HTTP adapter",
+    "Managed queue and storage adapters",
+    "IaC",
+    "Native CI plan/apply",
+    "Complete cost and cleanup evidence"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "kind": "reusable_component",
+  "id": "request-service",
+  "version": "0.1.0",
+  "name": "Persistent requests and local idempotent jobs",
+  "deployable": false,
+  "files": [
+    {
+      "path": "components/application/python-request-service/service.py",
+      "sha256": "1323be5b1374e8589c612eee3465a2cbe3f379586693bb1b7d37cf4389587c2e"
+    },
+    {
+      "path": "components/application/python-request-service/app.py",
+      "sha256": "c9e66052179079ca0f8a11b0518ca3702b47f52d3cc8d8b33f1f4c9f8ffcbd46"
+    },
+    {
+      "path": "components/application/python-request-service/README.md",
+      "sha256": "3290cd76355e3058c71c4e8048e413f502fb54e2bf17a151f048001231dcd8f3"
+    }
+  ]
+}

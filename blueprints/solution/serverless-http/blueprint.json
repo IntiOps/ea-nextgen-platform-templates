@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "serverless-http",
+  "version": "0.1.0",
+  "name": "Serverless HTTP API",
+  "purpose": "Separate API behavior from function runtime and data service.",
+  "scope": {
+    "included": [
+      "application",
+      "workload",
+      "database"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "application",
+      "type": "application",
+      "name": "Application"
+    },
+    {
+      "key": "workload",
+      "type": "workload",
+      "name": "Workload"
+    },
+    {
+      "key": "database",
+      "type": "database",
+      "name": "Database"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "workload",
+      "type": "workload_runs_application",
+      "target": "application"
+    },
+    {
+      "source": "application",
+      "type": "application_reads_from_database",
+      "target": "database"
+    },
+    {
+      "source": "application",
+      "type": "application_writes_to_database",
+      "target": "database"
+    }
+  ],
+  "viewpoints": [
+    "deployment"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [
+    "Gateway and function resource binding must be selected before implementation."
+  ],
+  "deployable": false
+}

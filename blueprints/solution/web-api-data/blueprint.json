@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "web-api-data",
+  "version": "0.1.0",
+  "name": "Web API with data",
+  "purpose": "Create and retrieve business requests with persistent storage.",
+  "scope": {
+    "included": [
+      "capability",
+      "service",
+      "application",
+      "team",
+      "database"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "capability",
+      "type": "capability",
+      "name": "Capability"
+    },
+    {
+      "key": "service",
+      "type": "service",
+      "name": "Service"
+    },
+    {
+      "key": "application",
+      "type": "application",
+      "name": "Application"
+    },
+    {
+      "key": "team",
+      "type": "team",
+      "name": "Team"
+    },
+    {
+      "key": "database",
+      "type": "database",
+      "name": "Database"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "service",
+      "type": "service_implements_capability",
+      "target": "capability"
+    },
+    {
+      "source": "application",
+      "type": "application_supports_service",
+      "target": "service"
+    },
+    {
+      "source": "application",
+      "type": "application_owned_by_team",
+      "target": "team"
+    },
+    {
+      "source": "application",
+      "type": "application_reads_from_database",
+      "target": "database"
+    },
+    {
+      "source": "application",
+      "type": "application_writes_to_database",
+      "target": "database"
+    }
+  ],
+  "viewpoints": [
+    "container",
+    "deployment"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [],
+  "deployable": false
+}

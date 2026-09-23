@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "kind": "architecture_blueprint",
+  "id": "kubernetes-existing-api",
+  "version": "0.1.0",
+  "name": "API on an existing cluster",
+  "purpose": "Run an application using an explicitly selected existing cluster.",
+  "scope": {
+    "included": [
+      "application",
+      "cluster",
+      "account"
+    ],
+    "excluded": [
+      "Provider credentials",
+      "Runtime records and personal data"
+    ]
+  },
+  "nodes": [
+    {
+      "key": "application",
+      "type": "application",
+      "name": "Application"
+    },
+    {
+      "key": "cluster",
+      "type": "cluster",
+      "name": "Cluster"
+    },
+    {
+      "key": "account",
+      "type": "cloud_account",
+      "name": "Account"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "application",
+      "type": "application_deployed_to_cluster",
+      "target": "cluster"
+    },
+    {
+      "source": "cluster",
+      "type": "cluster_deployed_to_cloud_account",
+      "target": "account"
+    }
+  ],
+  "viewpoints": [
+    "deployment"
+  ],
+  "decisions": [
+    {
+      "id": "deployment-target",
+      "status": "open",
+      "question": "Which runtime and quality constraints fit this architecture?"
+    }
+  ],
+  "constraints": [
+    "Confirm component identity before merging with an existing workspace.",
+    "A model does not grant runtime permissions."
+  ],
+  "gaps": [],
+  "deployable": false
+}
