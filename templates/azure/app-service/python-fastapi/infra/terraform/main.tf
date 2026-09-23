@@ -24,6 +24,7 @@ locals {
     managed_by = "ea-nextgen-demo"
     instance   = var.instance
     owner_id   = var.owner_id
+    purpose    = var.purpose
   }
 }
 
@@ -34,12 +35,14 @@ resource "azurerm_resource_group" "demo" {
 }
 
 resource "azurerm_service_plan" "demo" {
-  name                = "${local.app_name}-plan"
-  resource_group_name = azurerm_resource_group.demo.name
-  location            = azurerm_resource_group.demo.location
-  os_type             = "Linux"
-  sku_name            = "B1"
-  tags                = local.tags
+  name                   = "${local.app_name}-plan"
+  resource_group_name    = azurerm_resource_group.demo.name
+  location               = azurerm_resource_group.demo.location
+  os_type                = "Linux"
+  sku_name               = var.purpose == "production" ? "P1v3" : var.purpose == "staging" ? "S1" : "B1"
+  worker_count           = var.purpose == "production" ? 2 : 1
+  zone_balancing_enabled = var.purpose == "production"
+  tags                   = local.tags
 }
 
 resource "azurerm_linux_web_app" "demo" {
@@ -61,6 +64,14 @@ resource "azurerm_linux_web_app" "demo" {
     health_check_path                 = "/health"
     app_command_line                  = "python -m uvicorn main:app --host 0.0.0.0 --port 8000"
     application_stack { python_version = "3.12" }
+  }
+  logs {
+    http_logs {
+      file_system {
+        retention_in_days = var.retention_days
+        retention_in_mb   = 100
+      }
+    }
   }
   app_settings = {
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"

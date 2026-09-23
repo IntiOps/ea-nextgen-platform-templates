@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "profiles": {
+    "poc": {
+      "azure": {
+        "sku": "B1",
+        "instances": 1
+      },
+      "aws": {
+        "memory_mb": 256
+      },
+      "retention_days": 7,
+      "availability": "single-or-managed",
+      "expiry_allowed": true,
+      "schedule_allowed": true
+    },
+    "development": {
+      "azure": {
+        "sku": "B1",
+        "instances": 1
+      },
+      "aws": {
+        "memory_mb": 256
+      },
+      "retention_days": 7,
+      "availability": "single-or-managed",
+      "expiry_allowed": true,
+      "schedule_allowed": true
+    },
+    "staging": {
+      "azure": {
+        "sku": "S1",
+        "instances": 1
+      },
+      "aws": {
+        "memory_mb": 256
+      },
+      "retention_days": 14,
+      "availability": "single-or-managed",
+      "expiry_allowed": false,
+      "schedule_allowed": false
+    },
+    "production": {
+      "azure": {
+        "sku": "P1v3",
+        "instances": 2,
+        "availability": "zone-redundant"
+      },
+      "aws": {
+        "memory_mb": 512,
+        "availability": "managed-multizone"
+      },
+      "retention_days": 30,
+      "expiry_allowed": false,
+      "schedule_allowed": false
+    }
+  }
+}

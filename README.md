@@ -7,12 +7,16 @@ templates/
   azure/
     app-service/
       python-fastapi/
+  aws/
+    lambda/
+      python-http/
 catalog/index.yaml
 ```
 
 The initial candidate is a FastAPI web service on Azure App Service with Terraform,
-GitHub Actions, health checks and an explicit cleanup workflow. Azure DevOps pipelines
-are a separate delivery variant and are not implemented by this initial package.
+GitHub Actions, health checks and an explicit cleanup workflow. The repository also contains Bicep and AWS Lambda Terraform/CDK sources.
+GitHub Actions and Azure Pipelines validate these sources; deployment integration
+for the new variants is tracked in [implementation status](IMPLEMENTATION_STATUS.md).
 
 See [the package guide](templates/azure/app-service/python-fastapi/README.md).
 The catalog lists candidates separately from cloud certification: local tests do not
@@ -39,5 +43,9 @@ environments as documented in the package. Publishing or importing this reposito
 creates no Azure resources. Deployment and cleanup are manual, approved workflows.
 
 Do not commit credentials, `.env`, Terraform state or local caches. This repository
-contains no account-specific connection configuration. AWS/Lambda, Kubernetes and
-additional application stacks can be added under their own cloud/ecosystem paths.
+contains no account-specific connection configuration. Kubernetes and additional application stacks belong under their own cloud/ecosystem paths.
+
+Environment profiles and public-price estimation live in
+[components/lifecycle-finops](components/lifecycle-finops). Estimates explicitly
+block approval when non-compute costs are still missing; no automated scheduler
+is enabled by merely supplying a lifecycle policy.

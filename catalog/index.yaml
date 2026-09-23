@@ -1,7 +1,7 @@
 schema_version: '1.0'
 packages:
   - id: fastapi-azure-webapp
-    version: 0.2.0
+    version: 0.3.0
     cloud: azure
     ecosystem: app-service
     stack: python-fastapi

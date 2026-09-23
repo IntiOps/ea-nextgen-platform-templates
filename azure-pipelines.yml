@@ -1,0 +1,42 @@
+# Native Azure Pipelines source validation. No service connection or cloud apply.
+trigger:
+  branches:
+    include: [main]
+pr:
+  branches:
+    include: [main]
+pool:
+  vmImage: ubuntu-24.04
+steps:
+- checkout: self
+  persistCredentials: false
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.12'
+- task: NodeTool@0
+  inputs:
+    versionSpec: '22.x'
+- bash: |
+    set -euo pipefail
+    python -m pip install -r components/lifecycle-finops/requirements.txt -r templates/azure/app-service/python-fastapi/app/requirements.txt -r templates/azure/app-service/python-fastapi/tests/requirements.txt
+    python -m pytest templates/azure/app-service/python-fastapi/tests tests -q
+    az bicep install --version v0.40.2
+    az bicep build --file templates/azure/app-service/python-fastapi/infra/bicep/main.bicep --outfile $(Agent.TempDirectory)/app-service.json
+  displayName: Validate policy, applications and Bicep
+- bash: |
+    set -euo pipefail
+    python -m pip install -r templates/aws/lambda/python-http/infra/cdk-python/requirements.lock.txt
+    CDK_OUTDIR=$(Agent.TempDirectory)/cdk-python python templates/aws/lambda/python-http/infra/cdk-python/app.py
+    cd templates/aws/lambda/python-http/infra/cdk-typescript
+    npm ci --ignore-scripts --no-audit --no-fund
+    npm run build
+    CDK_OUTDIR=$(Agent.TempDirectory)/cdk-typescript node dist/app.js
+  displayName: Synthesize both CDK languages
+  env:
+    EA_ACCOUNT_ID: '123456789012'
+    EA_REGION: eu-west-1
+    EA_INSTANCE: validation
+    EA_PURPOSE: production
+    EA_REVISION: $(Build.SourceVersion)
+    EA_RETENTION_DAYS: '30'
+    EA_OWNER_ID: $(System.TeamProjectId)
