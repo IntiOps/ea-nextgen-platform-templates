@@ -4,15 +4,21 @@ import hashlib
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
-FIELDS = ("GITHUB_SHA", "DEMO_OPERATION", "TF_VAR_instance", "TF_VAR_owner_id", "TF_VAR_location", "ARM_SUBSCRIPTION_ID", "ARM_TENANT_ID", "TF_STATE_RESOURCE_GROUP", "TF_STATE_STORAGE_ACCOUNT", "TF_STATE_CONTAINER")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import state_backend  # noqa: E402
+
+FIELDS = ("GITHUB_SHA", "DEMO_OPERATION", "TF_VAR_instance", "TF_VAR_owner_id", "TF_VAR_location", "ARM_SUBSCRIPTION_ID", "ARM_TENANT_ID")
 
 
 def current():
     context = {key: os.environ.get(key, "") for key in FIELDS}
     if any(not value for value in context.values()):
         raise ValueError("required deployment context is missing")
+    # The apply must use the state the plan was made against, whichever backend the environment chose.
+    context["STATE_BACKEND_IDENTITY"] = state_backend.resolve()["identity"]
     if os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise ValueError("this demo may run only from main")
     if not re.fullmatch(r"[0-9a-f]{40}", context["GITHUB_SHA"]):

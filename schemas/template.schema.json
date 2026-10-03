@@ -107,6 +107,52 @@
       "title": "Lifecycle",
       "type": "object"
     },
+    "Materialization": {
+      "additionalProperties": false,
+      "description": "What a template knows how to build, in the metamodel's words (docs/v2, V4).\n\nA template is *offered* for a component because the component is of a type it declares, not because\nit matches a cloud. ``element_type`` is a metamodel element type key. ``requires_properties`` narrows\nit: every listed property must be present on the component with one of the listed values.\n``variants`` restricts which of the template's variants realise it; empty means all of them.",
+      "properties": {
+        "element_type": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Element Type",
+          "type": "string"
+        },
+        "requires_properties": {
+          "additionalProperties": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxProperties": 20,
+          "title": "Requires Properties",
+          "type": "object"
+        },
+        "variants": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9-]{0,95}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Variants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "element_type"
+      ],
+      "title": "Materialization",
+      "type": "object"
+    },
     "Output": {
       "additionalProperties": false,
       "properties": {
@@ -258,6 +304,233 @@
       "title": "Requirements",
       "type": "object"
     },
+    "SplitArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "application_package",
+            "container_image",
+            "iac_package"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "transport": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SplitArtifactTransport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "kind"
+      ],
+      "title": "SplitArtifact",
+      "type": "object"
+    },
+    "SplitArtifactTransport": {
+      "additionalProperties": false,
+      "description": "How the package travels from CI to CD, as the template's pipelines actually implement it (ART-T1).\n\nDeclares capability, not preference: an environment may only choose a destination listed here.\nThe native Azure Pipelines artifact is always listed, because CD still verifies the run's own\n``artifact.json`` — an external copy is transport, never the record. Feeds and packages are absent\non purpose: nothing implements them yet.",
+      "properties": {
+        "destinations": {
+          "items": {
+            "enum": [
+              "azure_pipeline",
+              "azure_blob",
+              "s3"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Destinations",
+          "type": "array"
+        },
+        "tool_path": {
+          "const": ".ea/delivery/transport.py",
+          "title": "Tool Path",
+          "type": "string"
+        },
+        "requirements": {
+          "title": "Requirements",
+          "type": "string"
+        }
+      },
+      "required": [
+        "destinations",
+        "tool_path",
+        "requirements"
+      ],
+      "title": "SplitArtifactTransport",
+      "type": "object"
+    },
+    "SplitDelivery": {
+      "additionalProperties": false,
+      "description": "Separated CI/CD (docs/v2 TABLERO, SPLIT-T1): a CI producer builds once, a CD consumer promotes.\n\n``files.pipeline`` keeps its meaning — the definition the platform stores for the variant — and must\nbe the CI producer. The CD consumer is a second file of the same package. Only Azure Pipelines\nvariants may declare it: it is the topology ``delivery_topology`` describes.",
+      "properties": {
+        "topology": {
+          "const": "split_ci_cd",
+          "title": "Topology",
+          "type": "string"
+        },
+        "ci_pipeline": {
+          "title": "Ci Pipeline",
+          "type": "string"
+        },
+        "cd_pipeline": {
+          "title": "Cd Pipeline",
+          "type": "string"
+        },
+        "artifact": {
+          "$ref": "#/$defs/SplitArtifact"
+        },
+        "presets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SplitPresets"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "topology",
+        "ci_pipeline",
+        "cd_pipeline",
+        "artifact"
+      ],
+      "title": "SplitDelivery",
+      "type": "object"
+    },
+    "SplitNaming": {
+      "additionalProperties": false,
+      "description": "Naming patterns the template's pipelines assume. ``<service>`` is required in each.",
+      "properties": {
+        "ci_pipeline": {
+          "maxLength": 64,
+          "pattern": "^(?:[a-z0-9-]|<service>|<environment>)+$",
+          "title": "Ci Pipeline",
+          "type": "string"
+        },
+        "cd_pipeline": {
+          "maxLength": 64,
+          "pattern": "^(?:[a-z0-9-]|<service>|<environment>)+$",
+          "title": "Cd Pipeline",
+          "type": "string"
+        },
+        "artifact": {
+          "maxLength": 64,
+          "pattern": "^(?:[a-z0-9-]|<service>|<environment>)+$",
+          "title": "Artifact",
+          "type": "string"
+        },
+        "environment": {
+          "maxLength": 64,
+          "pattern": "^(?:[a-z0-9-]|<service>|<environment>)+$",
+          "title": "Environment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ci_pipeline",
+        "cd_pipeline",
+        "artifact",
+        "environment"
+      ],
+      "title": "SplitNaming",
+      "type": "object"
+    },
+    "SplitPresets": {
+      "additionalProperties": false,
+      "description": "What the template assumes about the repository and Git flow (SPLIT-T2). Advice for the design,\ncompared with it and reported — never applied to a repository by declaring it here.",
+      "properties": {
+        "repository_preset": {
+          "enum": [
+            "app_with_iac",
+            "shared_infra",
+            "shared_templates",
+            "existing_monorepo"
+          ],
+          "title": "Repository Preset",
+          "type": "string"
+        },
+        "branching": {
+          "enum": [
+            "trunk_single",
+            "trunk_parallel",
+            "release_flow",
+            "gitflow",
+            "custom"
+          ],
+          "title": "Branching",
+          "type": "string"
+        },
+        "merge_method": {
+          "enum": [
+            "squash",
+            "merge_commit",
+            "rebase"
+          ],
+          "title": "Merge Method",
+          "type": "string"
+        },
+        "naming": {
+          "$ref": "#/$defs/SplitNaming"
+        }
+      },
+      "required": [
+        "repository_preset",
+        "branching",
+        "merge_method",
+        "naming"
+      ],
+      "title": "SplitPresets",
+      "type": "object"
+    },
+    "TerraformStateSupport": {
+      "additionalProperties": false,
+      "description": "Terraform state backends the variant initialises from the environment's EA configuration.\n\n``renderer`` is the package script that reads ``EA_STATE_BACKEND_JSON`` (non-secret settings only)\nand writes the backend block; the runner brings its own credentials. A Terraform variant without\nthis declaration keeps whatever backend it hard-codes, and EA must not claim to configure it.",
+      "properties": {
+        "backends": {
+          "items": {
+            "enum": [
+              "azurerm",
+              "s3",
+              "remote"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Backends",
+          "type": "array"
+        },
+        "renderer": {
+          "title": "Renderer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backends",
+        "renderer"
+      ],
+      "title": "TerraformStateSupport",
+      "type": "object"
+    },
     "Variant": {
       "additionalProperties": false,
       "properties": {
@@ -315,6 +588,28 @@
         },
         "files": {
           "$ref": "#/$defs/Files"
+        },
+        "delivery": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SplitDelivery"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TerraformStateSupport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -334,7 +629,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": "1.0",
+      "enum": [
+        "1.0",
+        "1.1",
+        "1.2"
+      ],
       "title": "Schema Version",
       "type": "string"
     },
@@ -403,6 +702,22 @@
     },
     "lifecycle": {
       "$ref": "#/$defs/Lifecycle"
+    },
+    "materializes": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Materialization"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Materializes"
     }
   },
   "required": [

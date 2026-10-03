@@ -1,0 +1,135 @@
+"""Write the Terraform backend EA configured for this environment. Non-secret settings only.
+
+EA stores one state backend per environment (azurerm, s3 or HCP Terraform ``remote``) and hands it to
+the runner as ``EA_STATE_BACKEND_JSON``, a configuration variable, never a secret. This script checks it
+with the same rules EA applies, recomputes its identity, and writes ``ea_backend.tf``. Credentials are
+never part of it: the runner authenticates to the backend itself (Entra OIDC for azurerm, the AWS
+credential chain for s3, ``TF_TOKEN_app_terraform_io`` for HCP Terraform).
+
+Without ``EA_STATE_BACKEND_JSON`` the package keeps its previous behaviour: an azurerm backend from
+``TF_STATE_RESOURCE_GROUP``/``TF_STATE_STORAGE_ACCOUNT``/``TF_STATE_CONTAINER`` with a key per owner
+and instance.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+FIELDS = {
+    "azurerm": ("resource_group_name", "storage_account_name", "container_name", "key"),
+    "s3": ("bucket", "region", "key"),
+    "remote": ("organization", "workspace"),
+}
+OUTPUT = "ea_backend.tf"
+
+
+class StateBackendError(ValueError):
+    """A configuration EA would refuse. The message names the field, never its value."""
+
+
+def parse(raw: dict) -> dict:
+    """The validated backend, with the identity EA computes for the same destination."""
+    if not isinstance(raw, dict):
+        raise StateBackendError("state backend must be an object")
+    mode = raw.get("mode")
+    if mode not in FIELDS:
+        raise StateBackendError("mode must be azurerm, s3 or remote")
+    unknown = set(raw) - set(FIELDS[mode]) - {"mode", "identity"}
+    if unknown:
+        # Anything else — an access key, a SAS token, a second backend's field — is refused, not ignored.
+        raise StateBackendError(f"fields do not belong to this backend: {sorted(unknown)}")
+    config = {"mode": mode}
+    for field in FIELDS[mode]:
+        value = raw.get(field)
+        if not isinstance(value, str) or not value or len(value) > 256 \
+                or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._/-]*", value) or ".." in value or "//" in value:
+            raise StateBackendError(f"invalid or missing {field}")
+        config[field] = value
+    if mode == "azurerm":
+        if not re.fullmatch(r"[a-z0-9]{3,24}", config["storage_account_name"]):
+            raise StateBackendError("invalid storage_account_name")
+        container = config["container_name"]
+        if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])", container) or "--" in container:
+            raise StateBackendError("invalid container_name")
+    if mode == "s3":
+        if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]", config["bucket"]):
+            raise StateBackendError("invalid bucket")
+        if not re.fullmatch(r"[a-z]{2}(?:-[a-z]+)+-\d", config["region"]):
+            raise StateBackendError("invalid region")
+    if mode == "remote" and any(not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]*", config[f]) for f in FIELDS[mode]):
+        raise StateBackendError("invalid HCP Terraform organization or workspace")
+    destination = {field: config[field] for field in FIELDS[mode]}
+    config["identity"] = mode + ":" + hashlib.sha256(json.dumps(destination, sort_keys=True).encode()).hexdigest()
+    if raw.get("identity") not in (None, config["identity"]):
+        raise StateBackendError("identity does not match the destination; the configuration was edited")
+    return config
+
+
+def resolve(environ=os.environ) -> dict:
+    """EA's per-environment backend, or the package's original azurerm settings."""
+    raw = environ.get("EA_STATE_BACKEND_JSON", "").strip()
+    if raw:
+        try:
+            return parse(json.loads(raw))
+        except json.JSONDecodeError:
+            raise StateBackendError("EA_STATE_BACKEND_JSON is not JSON") from None
+    return parse({
+        "mode": "azurerm",
+        "resource_group_name": environ.get("TF_STATE_RESOURCE_GROUP", ""),
+        "storage_account_name": environ.get("TF_STATE_STORAGE_ACCOUNT", ""),
+        "container_name": environ.get("TF_STATE_CONTAINER", ""),
+        "key": f"ea-demo/{environ.get('TF_VAR_owner_id', '')}/{environ.get('TF_VAR_instance', '')}.tfstate",
+    })
+
+
+def render(config: dict) -> str:
+    """The backend block, already in ``terraform fmt`` layout so ``fmt -check`` keeps passing."""
+    mode = config["mode"]
+    if mode == "remote":
+        lines = [("organization", json.dumps(config["organization"]))]
+        body = _aligned(lines) + f'    workspaces {{\n      name = {json.dumps(config["workspace"])}\n    }}\n'
+    else:
+        lines = [(field, json.dumps(config[field])) for field in FIELDS[mode]]
+        lines += [("use_azuread_auth", "true")] if mode == "azurerm" else [("encrypt", "true"), ("use_lockfile", "true")]
+        body = _aligned(lines)
+    return ("# Generated by operations/state_backend.py from the environment's EA state backend. Do not commit.\n"
+            f'terraform {{\n  backend "{mode}" {{\n{body}  }}\n}}\n')
+
+
+def _aligned(pairs) -> str:
+    width = max(len(name) for name, _ in pairs)
+    return "".join(f"    {name.ljust(width)} = {value}\n" for name, value in pairs)
+
+
+def write(directory: Path, config: dict) -> Path:
+    target = directory / OUTPUT
+    with tempfile.NamedTemporaryFile("w", dir=directory, prefix=".ea_backend-", delete=False) as handle:
+        handle.write(render(config))
+    os.replace(handle.name, target)
+    return target
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("command", choices=["write", "identity"])
+    parser.add_argument("--directory", type=Path, default=Path("."))
+    args = parser.parse_args(argv)
+    try:
+        config = resolve()
+    except StateBackendError as exc:
+        print(f"state backend refused: {exc}", file=sys.stderr)
+        return 1
+    if args.command == "write":
+        write(args.directory, config)
+    print(config["identity"])
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

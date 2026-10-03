@@ -4,6 +4,9 @@
 .terraform/
 *.tfstate
 *.tfstate.*
+# Generated per environment by operations/state_backend.py; never committed.
+ea_backend.tf
+.ea_backend-*
 __pycache__/
 .venv/
 node_modules/

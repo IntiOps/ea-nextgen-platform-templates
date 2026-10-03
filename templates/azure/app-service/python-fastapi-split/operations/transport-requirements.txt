@@ -1,0 +1,5 @@
+# Runner dependencies of EA's artifact transport tool (.ea/delivery/transport.py, pinned by SHA-256).
+# Installed only when an environment keeps the package in Azure Blob or Amazon S3; a native-only
+# delivery never installs them. Versions match what the tool is tested against.
+requests==2.31.0
+boto3>=1.42,<1.43

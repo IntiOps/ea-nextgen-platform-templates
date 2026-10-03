@@ -1,11 +1,16 @@
-schema_version: '1.0'
+schema_version: '1.1'
 id: fastapi-azure-webapp
-version: 0.3.0
+version: 0.4.0
 name: FastAPI on Azure Web App
 owner: platform-team
 description: Executable FastAPI, Terraform and GitHub Actions candidate. Local validation
   passed; Azure deployment evidence pending.
 status: candidate
+materializes:
+- element_type: api
+  requires_properties: {}
+  variants:
+  - azure-terraform-github
 parameters:
 - name: instance
   description: 'Unique instance name: 3–24 lowercase letters, digits or hyphens.'
@@ -35,8 +40,12 @@ variants:
       azurerm: =4.62.0
       python: '3.12'
     prerequisites:
-    - Sandbox subscription with Microsoft.Web registered, permissions to create dedicated
-      resource groups, and a pre-existing Azure Blob Terraform backend.
+    - Sandbox subscription with Microsoft.Web registered and permissions to create dedicated
+      resource groups.
+    - A pre-existing Terraform state backend chosen per environment in EA (EA_STATE_BACKEND_JSON)
+      or the original TF_STATE_* Azure Blob settings. The runner authenticates itself - Entra OIDC
+      for azurerm, the AWS credential chain for s3, TF_TOKEN_APP_TERRAFORM_IO for HCP Terraform, whose
+      workspace must use local execution because the workflow applies a saved plan.
     - GitHub repository on main with OIDC credentials for demo-plan, demo-deploy and
       demo-cleanup.
     - Required reviewers and prevent self-review on demo-deploy and demo-cleanup;
@@ -54,6 +63,9 @@ variants:
     smoke_test: tests/smoke.py
     cleanup: operations/cleanup.md
     readme: README.md
+  state:
+    backends: [azurerm, s3, remote]
+    renderer: operations/state_backend.py
 outputs:
 - name: application-url
   kind: url

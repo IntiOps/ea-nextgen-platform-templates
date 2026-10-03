@@ -6,7 +6,8 @@ terraform {
       version = "= 4.62.0"
     }
   }
-  backend "azurerm" {}
+  # The state backend is generated per environment into ea_backend.tf by operations/init.sh
+  # (azurerm, s3 or HCP Terraform, as configured in EA). Never run Terraform here without it.
 }
 
 provider "azurerm" {

@@ -1,4 +1,4 @@
-# FastAPI + Azure Web App — candidate 0.2.0
+# FastAPI + Azure Web App — candidate 0.4.0
 
 Runnable implementation, not yet certified against a real Azure subscription. It remains
 absent from the published catalog until plan, deployment, health and cleanup have cloud evidence.
@@ -30,13 +30,33 @@ configuration supporting these controls. No approval bypass is implemented.
 
 Configure an Entra federated credential for each used identity with audience
 `api://AzureADTokenExchange` and subject `repo:OWNER/REPOSITORY:environment:ENVIRONMENT`.
-Pre-register Microsoft.Web. Provision a separate Azure Blob state backend first; this demo
-never creates or destroys the backend. Grant data-plane access to its container.
+Pre-register Microsoft.Web. Provision the state backend first (Azure Blob by default; S3 or HCP
+Terraform when EA's environment says so); this demo never creates or destroys it.
 
 Set the following non-secret repository/environment variables:
 
 - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
-- `TF_STATE_RESOURCE_GROUP`, `TF_STATE_STORAGE_ACCOUNT`, `TF_STATE_CONTAINER`.
+- `TF_STATE_RESOURCE_GROUP`, `TF_STATE_STORAGE_ACCOUNT`, `TF_STATE_CONTAINER`, **or**
+  `EA_STATE_BACKEND_JSON` (below).
+
+### Terraform state per environment
+
+`main.tf` has no backend block. `operations/init.sh` runs `operations/state_backend.py`, which
+writes `ea_backend.tf` (ignored by git) from `EA_STATE_BACKEND_JSON` — the state backend the
+environment has in EA, non-secret JSON exactly as EA stores it — or, when unset, from the
+`TF_STATE_*` trio above with key `ea-demo/<owner>/<instance>.tfstate`. It applies EA's checks,
+refuses any field that is not a setting of the chosen backend (keys, SAS, tokens) and recomputes the
+identity EA recorded. The approved plan context binds that identity, so apply cannot use other state.
+
+| Backend | Settings | Runner authentication |
+| --- | --- | --- |
+| `azurerm` | resource group, storage account, container, key | Entra OIDC (`use_azuread_auth`), data-plane role on the container |
+| `s3` | bucket, region, key; encrypted, native lock file (Terraform ≥ 1.10) | AWS credential chain of the runner (for example an OIDC role step before init) |
+| `remote` (HCP Terraform) | organization, workspace | `TF_TOKEN_APP_TERRAFORM_IO` repository secret; the workspace must use **local** execution, because the workflow applies a saved plan |
+
+The backend is never created or destroyed here. Verified locally: `terraform fmt -check` and
+`terraform validate` with each generated backend (Terraform 1.14.9); no state operation has been run
+against a real account.
 
 Plan and apply may use different client IDs. Subscription, tenant and backend values must
 match across environments; the saved context is checked before apply. Never use production
@@ -84,3 +104,7 @@ success alone; that end-to-end integration and sandbox evidence remain required.
 
 References: https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions
 and https://registry.terraform.io/providers/hashicorp/azurerm/4.62.0/docs/resources/linux_web_app
+
+## Architecture materialization
+
+Package 0.3.1 uses manifest schema 1.1 and offers the `azure-terraform-github` variant for metamodel `api` components. It scaffolds the FastAPI HTTP service; it does not claim to implement every application or system in an architecture. Candidate selection and binding do not authorize deployment or certify Azure execution. Previously imported 0.3.0 commits remain unchanged. Import 0.3.1 from a new full commit after review and publication.

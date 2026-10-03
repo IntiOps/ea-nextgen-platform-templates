@@ -46,6 +46,9 @@ def context(monkeypatch):
     module = load("demo_context", "operations/context.py")
     for field in module.FIELDS:
         monkeypatch.setenv(field, "fixture")
+    monkeypatch.delenv("EA_STATE_BACKEND_JSON", raising=False)
+    for field in ("TF_STATE_RESOURCE_GROUP", "TF_STATE_STORAGE_ACCOUNT", "TF_STATE_CONTAINER"):
+        monkeypatch.setenv(field, "fixture")
     monkeypatch.setenv("GITHUB_SHA", "a" * 40)
     monkeypatch.setenv("GITHUB_REF", "refs/heads/main")
     monkeypatch.setenv("TF_VAR_instance", "demo")

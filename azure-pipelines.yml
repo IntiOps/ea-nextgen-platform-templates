@@ -22,6 +22,9 @@ steps:
     python tools/catalog.py validate
     az bicep install --version v0.40.2
     az bicep build --file templates/azure/app-service/python-fastapi/infra/bicep/main.bicep --outfile $(Agent.TempDirectory)/app-service.json
+    python -m pip install -r templates/azure/app-service/python-fastapi-split/tests/requirements.txt
+    python -m pytest templates/azure/app-service/python-fastapi-split/tests -q
+    az bicep build --file templates/azure/app-service/python-fastapi-split/infra/bicep/main.bicep --outfile $(Agent.TempDirectory)/app-service-split.json
   displayName: Validate policy, applications and Bicep
 - template: components/pipelines/azure-pipelines/validate.yml
 - bash: |

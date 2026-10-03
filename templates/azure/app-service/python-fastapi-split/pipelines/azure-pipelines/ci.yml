@@ -1,0 +1,87 @@
+# CI producer (separated CI/CD). Tests and builds the application package ONCE per commit and
+# publishes it with everything CD needs. It never deploys and holds no cloud service connection.
+#
+# Published artifacts, all from this one run:
+#   <artifactName>  app.zip (application + resolved dependencies) and artifact.json (digest, commit, run id)
+#   delivery        Bicep module, artifact verifier, transport requirements and smoke test: CD runs these
+#                   exact files and never checks out a branch that could have moved since this build.
+# An environment that keeps the package in Azure Blob or S3 additionally gets a copy uploaded by EA's
+# pinned transport tool, with that environment's storage identity (see README, "Artifact transport").
+trigger:
+  branches:
+    include: [main]
+# `pr:` applies to GitHub-hosted repositories. On Azure Repos it is ignored: PR validation is a build
+# validation branch policy pointing at this pipeline (EA reports whether it exists: split policy check).
+pr:
+  branches:
+    include: [main]
+
+parameters:
+  - name: packageRoot
+    displayName: Path of this package inside the repository
+    type: string
+    default: .
+  - name: artifactName
+    displayName: Artifact name (lower-case kebab-case; version and digest are recorded separately)
+    type: string
+    default: fastapi-webapp
+
+pool:
+  vmImage: ubuntu-24.04
+
+stages:
+  - stage: build
+    displayName: Test and build once
+    jobs:
+      - job: build
+        steps:
+          - checkout: self
+            persistCredentials: false
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+          - bash: |
+              set -euo pipefail
+              python -m pip install -r "${{ parameters.packageRoot }}/app/requirements.txt" -r "${{ parameters.packageRoot }}/tests/requirements.txt"
+              python -m pytest "${{ parameters.packageRoot }}/tests" -q
+            displayName: Test application and delivery contract
+          - bash: |
+              set -euo pipefail
+              site="$(Agent.TempDirectory)/site-packages"
+              # Wheels for the platform App Service runs (web.bicep linuxFxVersion PYTHON|3.12, Linux x86-64),
+              # not for whatever agent image builds them.
+              python -m pip install --only-binary=:all: --no-compile --target "$site" \
+                --platform manylinux2014_x86_64 --implementation cp --python-version 3.12 --abi cp312 \
+                -r "${{ parameters.packageRoot }}/app/requirements.txt"
+              python "${{ parameters.packageRoot }}/operations/package.py" \
+                --name "${{ parameters.artifactName }}" \
+                --revision "$(Build.SourceVersion)" \
+                --build-id "$(Build.BuildId)" \
+                --site-packages "$site" \
+                --output "$(Build.ArtifactStagingDirectory)/app/app.zip" \
+                --manifest "$(Build.ArtifactStagingDirectory)/app/artifact.json"
+            displayName: Build the package once
+          - bash: |
+              set -euo pipefail
+              out="$(Build.ArtifactStagingDirectory)/delivery"
+              mkdir -p "$out/infra" "$out/operations" "$out/tests"
+              cp "${{ parameters.packageRoot }}"/infra/bicep/*.bicep "$out/infra/"
+              cp "${{ parameters.packageRoot }}/operations/verify_artifact.py" "$out/operations/"
+              cp "${{ parameters.packageRoot }}/operations/transport-requirements.txt" "$out/operations/"
+              cp "${{ parameters.packageRoot }}/tests/smoke.py" "$out/tests/"
+            displayName: Stage delivery files from this commit
+          # External package transport (Azure Blob / S3) exists only when EA published its pinned tool
+          # to this repository for an environment that chose it. Native-only deliveries skip this.
+          - bash: |
+              set -euo pipefail
+              if [ -f .ea/delivery/transport.py ]; then
+                python -m pip install --disable-pip-version-check \
+                  -r "${{ parameters.packageRoot }}/operations/transport-requirements.txt"
+              fi
+            displayName: Prepare runner transport when EA configured one
+          - publish: $(Build.ArtifactStagingDirectory)/app
+            artifact: ${{ parameters.artifactName }}
+            displayName: Publish application package
+          - publish: $(Build.ArtifactStagingDirectory)/delivery
+            artifact: delivery
+            displayName: Publish delivery files

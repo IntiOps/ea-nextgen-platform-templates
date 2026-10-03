@@ -1,0 +1,104 @@
+schema_version: '1.2'
+id: fastapi-azure-webapp-split
+version: 0.2.0
+name: FastAPI on Azure Web App, separated CI/CD
+owner: platform-team
+description: Azure Pipelines CI builds the package once; a separate CD pipeline promotes that exact
+  artifact through environments with a per-environment infrastructure preview and approval. Static
+  contract tests pass; no Azure run evidence yet.
+status: draft
+materializes:
+- element_type: api
+  requires_properties: {}
+  variants:
+  - azure-bicep-azure-pipelines-split
+parameters:
+- name: service
+  description: 'Service name, lower-case kebab-case; environments are <service>-<environment>.'
+  kind: string
+- name: location
+  description: Azure region identifier.
+  kind: string
+  default: westeurope
+- name: cloud_credential
+  description: One Azure service connection per environment, referenced by the delivery binding; never
+    stored in the package.
+  kind: credential_reference
+variants:
+- id: azure-bicep-azure-pipelines-split
+  cloud: azure
+  runtime: azure_web_app
+  iac_engine: bicep
+  repository_provider: azure_repos
+  cicd_provider: azure_pipelines
+  requirements:
+    capabilities:
+    - plan
+    - deploy
+    tools:
+      python: '3.12'
+      azure_cli: '>=2.60'
+    prerequisites:
+    - Two Azure Pipelines definitions in one Azure DevOps project, created from ci.yml and cd.yml; the
+      CD resource `source` must name the CI definition.
+    - One Azure DevOps environment and one Azure service connection per promotion stage, with approvals
+      and checks configured on each environment. Connecting Azure DevOps grants nothing in Azure.
+    - Permission to create resource groups in the target subscription of each environment.
+  files:
+    application:
+    - app/main.py
+    - app/requirements.txt
+    - operations/package.py
+    infrastructure:
+    - infra/bicep/main.bicep
+    - infra/bicep/web.bicep
+    pipeline: pipelines/azure-pipelines/ci.yml
+    smoke_test: tests/smoke.py
+    cleanup: operations/cleanup.md
+    readme: README.md
+  delivery:
+    topology: split_ci_cd
+    ci_pipeline: pipelines/azure-pipelines/ci.yml
+    cd_pipeline: pipelines/azure-pipelines/cd.yml
+    artifact:
+      name: fastapi-webapp
+      kind: application_package
+      # ART-T1: where these pipelines can carry the package from CI to CD. The native Azure Pipelines
+      # artifact is always used and verified; azure_blob and s3 add a copy moved by EA's transport tool
+      # (published by EA to tool_path, pinned by SHA-256) with each environment's storage identity.
+      # Azure Artifacts feeds are not listed: nothing here implements them.
+      transport:
+        destinations: [azure_pipeline, azure_blob, s3]
+        tool_path: .ea/delivery/transport.py
+        requirements: operations/transport-requirements.txt
+    # SPLIT-T2: what these pipelines assume about the repository and the Git flow. EA compares them
+    # with the project's delivery design and topology and reports differences; declaring them here
+    # applies nothing to any repository.
+    presets:
+      repository_preset: app_with_iac
+      branching: trunk_parallel
+      merge_method: squash
+      naming:
+        ci_pipeline: <service>-ci
+        cd_pipeline: <service>-cd
+        artifact: <service>
+        environment: <service>-<environment>
+outputs:
+- name: application-url
+  kind: url
+  description: URL verified by the post-deployment revision check in each environment.
+- name: health-check
+  kind: health_evidence
+  description: HTTP check bound to the CI commit that produced the promoted package.
+lifecycle:
+  cost_assumptions: One Linux App Service plan per environment (B1, S1 or P1v3 by purpose). Pricing
+    depends on region; this package has no verified currency estimate.
+  billable_resources:
+  - Azure App Service Plan per environment
+  - application logs
+  suggested_ttl_hours: 8
+  cleanup_policy: explicit_approval
+  preserve:
+  - resources not owned by the instance resource group
+  recovery: If a stage fails, fix forward with a new CI run and promote it; never edit a deployed
+    package in place. The previous environment keeps the last verified package.

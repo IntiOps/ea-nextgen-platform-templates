@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
+# Initialise Terraform against the environment's state backend (see operations/state_backend.py).
+# The backend block is generated, never committed; credentials come from the runner identity.
 set -euo pipefail
-: "${TF_STATE_RESOURCE_GROUP:?}" "${TF_STATE_STORAGE_ACCOUNT:?}" "${TF_STATE_CONTAINER:?}" "${TF_VAR_instance:?}" "${TF_VAR_owner_id:?}"
-terraform init -input=false -lockfile=readonly \
-  -backend-config="use_oidc=true" \
-  -backend-config="use_azuread_auth=true" \
-  -backend-config="resource_group_name=${TF_STATE_RESOURCE_GROUP}" \
-  -backend-config="storage_account_name=${TF_STATE_STORAGE_ACCOUNT}" \
-  -backend-config="container_name=${TF_STATE_CONTAINER}" \
-  -backend-config="key=ea-demo/${TF_VAR_owner_id}/${TF_VAR_instance}.tfstate"
+: "${TF_VAR_instance:?}" "${TF_VAR_owner_id:?}"
+identity=$(python3 "$(dirname "$0")/state_backend.py" write --directory .)
+case "$identity" in
+  azurerm:*) export ARM_USE_OIDC="${ARM_USE_OIDC:-true}" ;;
+  remote:*)  : "${TF_TOKEN_app_terraform_io:?HCP Terraform needs TF_TOKEN_app_terraform_io from a runner secret}" ;;
+esac
+terraform init -input=false -lockfile=readonly

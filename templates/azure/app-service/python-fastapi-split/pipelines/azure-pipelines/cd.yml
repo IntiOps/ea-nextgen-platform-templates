@@ -1,0 +1,179 @@
+# CD consumer (separated CI/CD). Promotes ONE exact CI run's package through the environments, in
+# order. It never builds, never checks out source, and has no push trigger: it runs when the CI producer
+# completes on the listed branches, or manually against a CI run chosen explicitly. A manual run must
+# pass expectedDigest (the digest EA recorded and a person approved); without it the verifier refuses.
+#
+# Per environment, two stages:
+#   plan_<env>     verify the artifact and preview the infrastructure change (what-if) for THAT
+#                  environment. It uses no protected environment, so it runs without waiting and its
+#                  output is visible before anyone approves.
+#   promote_<env>  declares the Azure DevOps environment. Azure DevOps evaluates approvals and checks
+#                  when a stage starts, so this approval comes AFTER the preview, not before it. Then
+#                  it re-verifies, applies and deploys the same zip.
+# Infrastructure is previewed per environment and never reused across them; the application bytes are.
+# `lockBehavior: sequential` takes effect with an Exclusive Lock check on each environment: promotions
+# to one environment then run one at a time, in order.
+trigger: none
+pr: none
+
+parameters:
+  - name: service
+    displayName: Service name (lower-case kebab-case); environments are named <service>-<environment>
+    type: string
+    default: fastapi-webapp
+  - name: artifactName
+    type: string
+    default: fastapi-webapp
+  - name: expectedDigest
+    displayName: SHA-256 of the package EA recorded and a person approved (empty only when not orchestrated by EA)
+    type: string
+    default: ''
+  - name: ownerId
+    type: string
+    default: ea-nextgen
+  - name: environments
+    displayName: Promotion chain, in order (from the EA delivery topology)
+    type: object
+    default:
+      - name: dev
+        azureEnvironment: fastapi-webapp-dev
+        serviceConnection: fastapi-webapp-dev
+        purpose: development
+        location: westeurope
+        # Where CD takes the package from. azure_pipeline (native) needs nothing else; azure_blob and
+        # s3 also carry artifactDestinationJson, storageServiceConnection and, for s3, storageRegion.
+        artifactProvider: azure_pipeline
+      - name: prod
+        azureEnvironment: fastapi-webapp-prod
+        serviceConnection: fastapi-webapp-prod
+        purpose: production
+        location: westeurope
+        artifactProvider: azure_pipeline
+
+resources:
+  pipelines:
+    - pipeline: ci
+      source: fastapi-webapp-ci
+      trigger:
+        branches:
+          include: [main]
+
+pool:
+  vmImage: ubuntu-24.04
+
+variables:
+  CI_COMMIT: $(resources.pipeline.ci.sourceCommit)
+  CI_RUN_ID: $(resources.pipeline.ci.runID)
+
+stages:
+  - ${{ each env in parameters.environments }}:
+      - stage: plan_${{ replace(env.name, '-', '_') }}
+        displayName: Preview ${{ env.name }}
+        jobs:
+          - job: plan
+            displayName: Verify artifact and preview infrastructure for ${{ env.name }}
+            steps:
+              - checkout: none
+              - task: UsePythonVersion@0
+                displayName: Use a managed Python (the image's system Python is externally managed, PEP 668)
+                inputs:
+                  versionSpec: '3.12'
+              - download: ci
+                artifact: ${{ parameters.artifactName }}
+              - download: ci
+                artifact: delivery
+              - ${{ if in(env.artifactProvider, 'azure_blob', 's3') }}:
+                - bash: |
+                    set -euo pipefail
+                    python -m pip install --disable-pip-version-check \
+                      -r "$(Pipeline.Workspace)/ci/delivery/operations/transport-requirements.txt"
+                  displayName: Prepare runner transport for ${{ env.name }}
+              - bash: |
+                  set -euo pipefail
+                  python3 "$(Pipeline.Workspace)/ci/delivery/operations/verify_artifact.py" \
+                    --package "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/app.zip" \
+                    --manifest "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/artifact.json" \
+                    --revision "$(CI_COMMIT)" --build-id "$(CI_RUN_ID)" \
+                    --expected-digest "${{ parameters.expectedDigest }}" \
+                    --reason "$(Build.Reason)"
+                displayName: Verify the exact CI artifact
+              - task: AzureCLI@2
+                displayName: What-if for ${{ env.name }}
+                inputs:
+                  azureSubscription: ${{ env.serviceConnection }}
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -euo pipefail
+                    az deployment sub what-if --location "${{ env.location }}" \
+                      --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
+                      --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
+                                   location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)"
+      - stage: promote_${{ replace(env.name, '-', '_') }}
+        displayName: Promote to ${{ env.name }}
+        dependsOn: plan_${{ replace(env.name, '-', '_') }}
+        lockBehavior: sequential
+        jobs:
+          - deployment: apply
+            displayName: Apply and deploy to ${{ env.name }}
+            environment: ${{ env.azureEnvironment }}
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - task: UsePythonVersion@0
+                      displayName: Use a managed Python (the image's system Python is externally managed, PEP 668)
+                      inputs:
+                        versionSpec: '3.12'
+                    - download: ci
+                      artifact: ${{ parameters.artifactName }}
+                    - download: ci
+                      artifact: delivery
+                    - ${{ if in(env.artifactProvider, 'azure_blob', 's3') }}:
+                      - bash: |
+                          set -euo pipefail
+                          python -m pip install --disable-pip-version-check \
+                            -r "$(Pipeline.Workspace)/ci/delivery/operations/transport-requirements.txt"
+                        displayName: Prepare runner transport for ${{ env.name }}
+                    - bash: |
+                        set -euo pipefail
+                        python3 "$(Pipeline.Workspace)/ci/delivery/operations/verify_artifact.py" \
+                          --package "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/app.zip" \
+                          --manifest "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/artifact.json" \
+                          --revision "$(CI_COMMIT)" --build-id "$(CI_RUN_ID)" \
+                          --expected-digest "${{ parameters.expectedDigest }}" \
+                          --reason "$(Build.Reason)"
+                      displayName: Re-verify after approval
+                    - task: AzureCLI@2
+                      displayName: Apply infrastructure for ${{ env.name }}
+                      inputs:
+                        azureSubscription: ${{ env.serviceConnection }}
+                        scriptType: bash
+                        scriptLocation: inlineScript
+                        inlineScript: |
+                          set -euo pipefail
+                          out=$(az deployment sub create --location "${{ env.location }}" \
+                            --name "${{ parameters.service }}-${{ env.name }}-$(CI_RUN_ID)" \
+                            --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
+                            --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
+                                         location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)" \
+                            --query properties.outputs -o json)
+                          app_name=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["application_name"]["value"])')
+                          app_rg=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["resource_group_name"]["value"])')
+                          app_url=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["application_url"]["value"])')
+                          test -n "$app_name" && test -n "$app_rg" && test -n "$app_url"
+                          echo "##vso[task.setvariable variable=APP_NAME]$app_name"
+                          echo "##vso[task.setvariable variable=APP_RG]$app_rg"
+                          echo "##vso[task.setvariable variable=APP_URL]$app_url"
+                    - task: AzureCLI@2
+                      displayName: Deploy the same package to ${{ env.name }}
+                      inputs:
+                        azureSubscription: ${{ env.serviceConnection }}
+                        scriptType: bash
+                        scriptLocation: inlineScript
+                        inlineScript: |
+                          set -euo pipefail
+                          az webapp deploy --resource-group "$(APP_RG)" --name "$(APP_NAME)" --type zip \
+                            --src-path "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/app.zip"
+                    - bash: python3 "$(Pipeline.Workspace)/ci/delivery/tests/smoke.py" --url "$(APP_URL)" --revision "$(CI_COMMIT)"
+                      displayName: Verify the promoted revision is serving

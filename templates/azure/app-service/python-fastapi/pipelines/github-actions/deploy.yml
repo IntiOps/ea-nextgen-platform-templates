@@ -39,6 +39,12 @@ env:
   TF_STATE_RESOURCE_GROUP: ${{ vars.TF_STATE_RESOURCE_GROUP }}
   TF_STATE_STORAGE_ACCOUNT: ${{ vars.TF_STATE_STORAGE_ACCOUNT }}
   TF_STATE_CONTAINER: ${{ vars.TF_STATE_CONTAINER }}
+  # EA's state backend for this environment (non-secret JSON), a repository variable like TF_STATE_*.
+  # When set it replaces the TF_STATE_* trio. The approved plan context binds its identity, so apply
+  # refuses a backend different from the one the plan was made against.
+  EA_STATE_BACKEND_JSON: ${{ vars.EA_STATE_BACKEND_JSON }}
+  # Only for an HCP Terraform backend; empty otherwise.
+  TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
   DEMO_OPERATION: ${{ inputs.operation }}
   DEMO_CONFIRMATION: ${{ inputs.confirmation }}
   TF_IN_AUTOMATION: 'true'
