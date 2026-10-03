@@ -1,0 +1,9 @@
+[project]
+name = "orders-architecture-lab"
+version = "1.0.0"
+description = "Workshop lab: AI writes code. Who designs the architecture?"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

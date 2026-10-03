@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(docs/architecture/**)",
+      "Write(docs/architecture/**)",
+      "Edit(tools/**)",
+      "Write(tools/**)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)",
+      "Edit(AGENTS.md)",
+      "Write(AGENTS.md)",
+      "Edit(CLAUDE.md)",
+      "Write(CLAUDE.md)",
+      "Edit(pyproject.toml)",
+      "Write(pyproject.toml)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/guardrail.py post-edit",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/guardrail.py stop",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

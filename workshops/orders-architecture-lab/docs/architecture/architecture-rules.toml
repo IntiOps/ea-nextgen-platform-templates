@@ -1,0 +1,44 @@
+# Dependency rules of the Orders lab. Read by tools/check_architecture.py and mirrored in the C4 docs.
+# Modules are dotted names under src/. Patterns use shell-style wildcards.
+
+contexts = ["orders", "payments", "notifications"]
+layers = ["domain", "application", "infrastructure"]
+
+[[rules]]
+id = "ARCH-001"
+statement = "The domain depends on nothing outside the domain: no application, no infrastructure, no frameworks or persistence."
+source = ["*.domain", "*.domain.*"]
+forbid = ["*.application", "*.application.*", "*.infrastructure", "*.infrastructure.*", "sqlite3", "sqlalchemy*", "requests*", "fastapi*", "django*", "flask*"]
+adr = "ADR-0001"
+
+[[rules]]
+id = "ARCH-002"
+statement = "The application layer depends on ports, never on infrastructure."
+source = ["*.application", "*.application.*"]
+forbid = ["*.infrastructure", "*.infrastructure.*"]
+adr = "ADR-0001"
+
+[[rules]]
+id = "ARCH-003"
+statement = "A context uses another context only through that context's application layer, from its own infrastructure (an adapter)."
+source = ["orders.domain*", "orders.application*"]
+forbid = ["payments*", "notifications*"]
+adr = "ADR-0002"
+
+[[rules]]
+id = "ARCH-004"
+statement = "No context reaches into another context's domain or infrastructure."
+source = ["orders.*", "payments.*", "notifications.*"]
+forbid_foreign = ["domain", "infrastructure"]
+adr = "ADR-0002"
+
+# How big a change may be before a person must look at it (tools/guardrail.py). The minimal fix of the
+# three deliberate violations changes about 20 lines in 3 files; a rewrite is not a fix.
+[change_budget]
+max_files = 4
+max_changed_lines = 40
+statement = "A fix changes only what the violations require."
+# The agent may not change what judges it.
+protected = ["docs/architecture/*", "tools/*", ".claude/*", "AGENTS.md", "CLAUDE.md", "pyproject.toml"]
+# Tests may change their wiring (a fix can change how a use case is built), never lose a check.
+tests = "no fewer assertions"
