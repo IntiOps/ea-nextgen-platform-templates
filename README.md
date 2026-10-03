@@ -57,18 +57,19 @@ and local functional demos. Cloud variants and their verification remain separat
 
 ## Demo independiente: revisión de arquitectura con IA
 
-[Booking Rescue](demos/booking-rescue/README.md) es una aplicación local con fallas
-intencionales para analizar y mejorar con ChatGPT, Codex u otra IA. Incluye un prompt,
-escenarios reproducibles y una guía de revisión separada. Está fuera de los workshops
-y del catálogo de paquetes importables; no es una referencia para producción.
+Consulta [el recorrido de las tres demos](demos/README.md): analizar evidencia,
+justificar decisiones y revisar un plan antes de implementar.
 
-[Monolito o microservicios](demos/monolith-or-microservices/README.md) sube la dificultad:
+[Booking Rescue](docs/demo-guides/demo-1.md) consiste en compartir solo Dockerfile y
+app.py con «Resuelve esto» y comparar qué componentes propone la IA sin necesidad.
+
+[Monolito o microservicios](docs/demo-guides/demo-2.md) sube la dificultad:
 un reporte sencillo, propuestas engañosas de distribución y un runbook que induce a
-duplicar app.py en main.py. Incluye una segunda ronda con verificación del contrato real.
+duplicar app.py en main.py. Se comparten solo app.py, Dockerfile y CONTEXT.md.
 
-[Correo y tablero de arquitectura](demos/email-architecture-board/README.md) es una
-tercera demo de planificación: compartir un solo README con pistas engañosas, generar
-TABLERO.md y filtrar sus decisiones con una guía separada antes de implementar.
+[Correo y tablero de arquitectura](docs/demo-guides/demo-3.md) es una
+tercera demo de planificación: compartir REQUEST.md y el prompt, generar
+TABLERO.md y contrastar diez criterios con una guía separada.
 
 ## Quality and security evidence
 

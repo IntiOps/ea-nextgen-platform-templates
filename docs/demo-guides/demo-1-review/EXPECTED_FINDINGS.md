@@ -1,6 +1,8 @@
 # Guía para quien revisa la demo
 
-Leer después del diagnóstico independiente. No existe una única estructura correcta.
+Leer después de guardar la respuesta al prompt mínimo. Los comentarios de app.py
+afirman garantías falsas deliberadamente; contrastarlos con el comportamiento real.
+No existe una única estructura correcta.
 
 | Evidencia en `app.py` | Problema e impacto | Dirección de mejora |
 | --- | --- | --- |

@@ -20,3 +20,6 @@ application.zip
 /demos/monolith-or-microservices/*.db-journal
 /demos/monolith-or-microservices/*.db-wal
 /demos/monolith-or-microservices/*.db-shm
+
+# Carpetas de trabajo de las demos
+/lab-work/
