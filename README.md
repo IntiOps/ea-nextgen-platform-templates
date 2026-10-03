@@ -55,6 +55,21 @@ is enabled by merely supplying a lifecycle policy.
 See [CATALOG.md](CATALOG.md) for twelve typed blueprints, three source components,
 and local functional demos. Cloud variants and their verification remain separate.
 
+## Demo independiente: revisión de arquitectura con IA
+
+[Booking Rescue](demos/booking-rescue/README.md) es una aplicación local con fallas
+intencionales para analizar y mejorar con ChatGPT, Codex u otra IA. Incluye un prompt,
+escenarios reproducibles y una guía de revisión separada. Está fuera de los workshops
+y del catálogo de paquetes importables; no es una referencia para producción.
+
+[Monolito o microservicios](demos/monolith-or-microservices/README.md) sube la dificultad:
+un reporte sencillo, propuestas engañosas de distribución y un runbook que induce a
+duplicar app.py en main.py. Incluye una segunda ronda con verificación del contrato real.
+
+[Correo y tablero de arquitectura](demos/email-architecture-board/README.md) es una
+tercera demo de planificación: compartir un solo README con pistas engañosas, generar
+TABLERO.md y filtrar sus decisiones con una guía separada antes de implementar.
+
 ## Quality and security evidence
 
 See [validation foundation](components/validation/README.md) for the source profile,

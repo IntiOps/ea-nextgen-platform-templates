@@ -15,3 +15,8 @@ node_modules/
 cdk.out/
 dist/
 application.zip
+.demo-preparation.log
+/demos/monolith-or-microservices/*.db
+/demos/monolith-or-microservices/*.db-journal
+/demos/monolith-or-microservices/*.db-wal
+/demos/monolith-or-microservices/*.db-shm
