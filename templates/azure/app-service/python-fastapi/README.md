@@ -1,4 +1,4 @@
-# FastAPI + Azure Web App — candidate 0.4.0
+# FastAPI + Azure Web App — candidate 0.4.1
 
 Runnable implementation, not yet certified against a real Azure subscription. The catalog
 lists it as a candidate with `cloud_verified: false` until plan, deployment, health and
@@ -108,4 +108,4 @@ and https://registry.terraform.io/providers/hashicorp/azurerm/4.62.0/docs/resour
 
 ## Architecture materialization
 
-Package 0.4.0 uses manifest schema 1.1 and offers the `azure-terraform-github` variant for metamodel `api` components. It scaffolds the FastAPI HTTP service; it does not claim to implement every application or system in an architecture. Candidate selection and binding do not authorize deployment or certify Azure execution. Previously imported commits remain unchanged. Import 0.4.0 from a new full commit after review and publication.
+Package 0.4.1 uses manifest schema 1.1 and offers the `azure-terraform-github` variant for metamodel `api` components. It scaffolds the FastAPI HTTP service; it does not claim to implement every application or system in an architecture. Candidate selection and binding do not authorize deployment or certify Azure execution. Previously imported commits remain unchanged. Import 0.4.1 from a new full commit after review and publication.

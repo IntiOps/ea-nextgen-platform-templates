@@ -5,6 +5,11 @@ variable "subscription_id" {
     error_message = "A subscription UUID is required."
   }
 }
+
+variable "use_oidc" {
+  type    = bool
+  default = true
+}
 variable "instance" {
   type = string
   validation {
