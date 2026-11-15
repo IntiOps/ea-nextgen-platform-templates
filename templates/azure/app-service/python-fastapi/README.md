@@ -1,7 +1,8 @@
 # FastAPI + Azure Web App — candidate 0.4.0
 
-Runnable implementation, not yet certified against a real Azure subscription. It remains
-absent from the published catalog until plan, deployment, health and cleanup have cloud evidence.
+Runnable implementation, not yet certified against a real Azure subscription. The catalog
+lists it as a candidate with `cloud_verified: false` until plan, deployment, health and
+cleanup have cloud evidence.
 
 The package creates a dedicated resource group, Linux B1 service plan and Python 3.12 Web App.
 Names and Terraform state are separated by immutable GitHub repository ID and instance name.
@@ -107,4 +108,4 @@ and https://registry.terraform.io/providers/hashicorp/azurerm/4.62.0/docs/resour
 
 ## Architecture materialization
 
-Package 0.3.1 uses manifest schema 1.1 and offers the `azure-terraform-github` variant for metamodel `api` components. It scaffolds the FastAPI HTTP service; it does not claim to implement every application or system in an architecture. Candidate selection and binding do not authorize deployment or certify Azure execution. Previously imported 0.3.0 commits remain unchanged. Import 0.3.1 from a new full commit after review and publication.
+Package 0.4.0 uses manifest schema 1.1 and offers the `azure-terraform-github` variant for metamodel `api` components. It scaffolds the FastAPI HTTP service; it does not claim to implement every application or system in an architecture. Candidate selection and binding do not authorize deployment or certify Azure execution. Previously imported commits remain unchanged. Import 0.4.0 from a new full commit after review and publication.

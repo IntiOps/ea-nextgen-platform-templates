@@ -92,6 +92,8 @@ def test_unprotected_environment_cannot_authorize_deploy():
 @pytest.mark.parametrize("change,operation", [
     ({"address": "azurerm_storage_account.shared", "change": {"actions": ["delete"]}}, "destroy"),
     ({"address": "azurerm_linux_web_app.demo", "change": {"actions": ["delete", "create"]}}, "deploy"),
+    ({"address": "azurerm_linux_web_app.demo", "change": {"actions": ["create"]}}, "destroy"),
+    ({"address": "azurerm_linux_web_app.demo", "change": {"actions": ["update"]}}, "destroy"),
     ({"address": "azurerm_linux_web_app.demo", "change": {"actions": ["delete"], "before": {"id": "/subscriptions/other/resourceGroups/shared"}}}, "destroy"),
 ])
 def test_plan_cannot_destroy_unrelated_or_unapproved_resources(change, operation):
