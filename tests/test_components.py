@@ -77,3 +77,24 @@ def test_ai_kit_hooks_call_the_guardrail():
     hooks = json.loads((ROOT/'components/ai-kit/.claude/settings.json').read_text())['hooks']
     assert 'guardrail.py post-edit' in hooks['PostToolUse'][0]['hooks'][0]['command']
     assert 'guardrail.py stop' in hooks['Stop'][0]['hooks'][0]['command']
+
+
+def test_the_guardrail_measures_the_first_commit_of_a_new_repository(tmp_path):
+    """A bootstrap commit has no parent: CI compares it with the empty tree, so it can be judged (P2-08 run)."""
+    import shutil
+    import subprocess
+    import sys
+    repo = tmp_path/'service'
+    shutil.copytree(ROOT/'templates/azure/app-service/python-fastapi-split', repo,
+                    ignore=shutil.ignore_patterns('__pycache__', '.pytest_cache'))
+    git = lambda *args: subprocess.run(['git', '-C', str(repo), *args], check=True, capture_output=True, text=True)
+    git('init', '-q', '-b', 'main')
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'add', '-A')
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-m', 'bootstrap')
+    evidence = tmp_path/'guardrail.json'
+    run = subprocess.run([sys.executable, 'tools/guardrail.py', 'check', '--ci', '--no-tests', '--base', 'HEAD~1',
+                          '--json', str(evidence)], cwd=repo, capture_output=True, text=True)
+    result = json.loads(evidence.read_text())
+    assert run.returncode == 0, run.stdout
+    assert result['change']['measured'] and result['result'] == 'needs_review'
+    assert 'AGENTS.md' in result['change']['protected_paths']
