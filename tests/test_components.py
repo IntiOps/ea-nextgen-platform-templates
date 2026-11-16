@@ -39,6 +39,13 @@ def test_ai_kit_copies_match_canonical_sources():
             assert (ROOT/'components/ai-kit'/name).read_bytes() == (ROOT/'templates'/package/name).read_bytes(), name
 
 
+def test_split_templates_share_the_cleanup_tools_and_their_tests():
+    """P4-05: one cleanup helper, TTL report and contract tests, byte-identical in both split templates."""
+    first, second = (ROOT/'templates'/package for package in SPLIT_PACKAGES)
+    for name in ['operations/cleanup_resources.py', 'operations/ttl_report.py', 'tests/test_cleanup.py', 'tests/test_ttl_report.py']:
+        assert (first/name).read_bytes() == (second/name).read_bytes(), name
+
+
 def test_ai_kit_protected_paths_agree_everywhere():
     kit = ROOT/'components/ai-kit'
     listed = {line.strip() for line in (kit/'.eanextgen.d/rules/protected-paths.txt').read_text().splitlines()

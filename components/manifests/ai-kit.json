@@ -2,13 +2,13 @@
   "schema_version": "1.0",
   "kind": "reusable_component",
   "id": "ai-kit",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "name": "AI agent guardrail kit for generated repositories",
   "deployable": false,
   "files": [
     {
       "path": "components/ai-kit/.claude/settings.json",
-      "sha256": "e55cb8b3a826d778b7f44cf7e0ea1926df63731d44270fa01e89206a34fb7cdb"
+      "sha256": "c7cd05cc7b3c6b643efb9e5bd1e810066cc6f8e623c21c37fda6d3dc0575c82c"
     },
     {
       "path": "components/ai-kit/.eanextgen.d/rules/architecture-rules.toml",
@@ -16,7 +16,7 @@
     },
     {
       "path": "components/ai-kit/.eanextgen.d/rules/protected-paths.txt",
-      "sha256": "c0a4bdc4c62f90b7e8edefcb33df2a0e5c91a39a1c25d03c0cb33286554b9051"
+      "sha256": "69ab2432de20140d70d45b65e5bb0c259316d0bb76b61b4064be542a03bb4762"
     },
     {
       "path": "components/ai-kit/.eanextgen.d/standards/analyse.prompt.md",
@@ -52,7 +52,7 @@
     },
     {
       "path": "components/ai-kit/AGENTS.md",
-      "sha256": "12810f87a1c65815610195e664df31cbb41ae009f8724fd984964ff7a65d84ea"
+      "sha256": "17592bd28499b84ce3a8e28d47cd108d2de12471070886fd15c8c72bbf5b24b5"
     },
     {
       "path": "components/ai-kit/CLAUDE.md",
@@ -64,7 +64,7 @@
     },
     {
       "path": "components/ai-kit/README.md",
-      "sha256": "3139457e75740bb4d0396afebc841c8a3ff3e351b8b817ac7e44090d31a8b827"
+      "sha256": "f369775fe79eb899c93c677e44cb251ad4e4cfd24fb40a235179d588b8337aeb"
     },
     {
       "path": "components/ai-kit/docs/adr/0001-service-boundaries.md",

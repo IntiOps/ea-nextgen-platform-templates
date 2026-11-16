@@ -4,6 +4,8 @@ AGENTS.md
 CLAUDE.md
 template.yaml
 Makefile
+Dockerfile
+.dockerignore
 .claude/*
 .github/*
 .ea/*

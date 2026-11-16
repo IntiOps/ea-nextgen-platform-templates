@@ -1,11 +1,12 @@
 # FastAPI on Azure Web App · separated CI/CD (draft)
 
-Two Azure Pipelines definitions from one repository:
+Two Azure Pipelines definitions from one repository deliver the service; a third, queued by hand, removes it:
 
 | Pipeline | File | Does | Never does |
 | --- | --- | --- | --- |
 | CI producer | `pipelines/azure-pipelines/ci.yml` | Tests, builds `app.zip` once with resolved dependencies, publishes it with `artifact.json` (SHA-256, commit, run id) and the delivery files | Deploy; hold a cloud connection |
 | CD consumer | `pipelines/azure-pipelines/cd.yml` | Consumes one CI run through `resources.pipelines`, verifies the artifact, previews infrastructure per environment, waits for approval, applies and deploys the same zip, checks the revision is serving | Build; check out source; run on push |
+| Gated cleanup | `pipelines/azure-pipelines/cleanup.yml` | Queued by hand with `confirm: delete <service>`: lists the resources tagged `managed_by=ea-nextgen-template` and `instance=<service>-<env>`, waits for the environment approval, deletes exactly that list (app before plan) | Run on a trigger; delete the resource group; touch untagged or `bind` resources |
 
 Promotion order and each environment's Azure DevOps environment and service connection come from
 the EA delivery topology (`parameters.environments`). Approvals and checks live on the Azure DevOps
@@ -39,12 +40,21 @@ New infrastructure and infrastructure already in place are the same operation: d
 `shared` across resource groups is unverified: App Service may require the app and the plan in the same
 resource group and region. Until a run proves otherwise, put the app's `resourceGroup` where the plan is.
 
-## AI agent guardrails (AI kit v0)
+## Cleanup and TTL report (P4-05)
+
+`cleanup.yml` deletes only what the template owns: in each environment's resource group, the
+resources tagged BOTH `managed_by=ea-nextgen-template` and `instance=<service>-<env>`. `list_<env>`
+publishes that list without approval; `delete_<env>` is a deployment job on the environment, so the
+approval comes after the list, and it refuses if the set changed. `bind` environments are skipped.
+`operations/ttl_report.py` reports groups and resources whose `ea-ttl` tag has passed. Details and
+commands: `operations/cleanup.md`. Contract tests: `tests/test_cleanup.py`, `tests/test_ttl_report.py`.
+
+## AI agent guardrails (AI kit)
 
 `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.github/copilot-instructions.md` and
 `.eanextgen.d/rules/protected-paths.txt` come from `components/ai-kit` (byte-identical copies). They tell
 coding agents how to work in the generated repository and keep them off the paths that judge them
-(pipelines, infra, operations, the delivery contract test). `AGENTS.md` carries `{{ea.<key>}}` tokens the
+(pipelines, infra, operations, `Dockerfile`, `.dockerignore`, the delivery contract test). `AGENTS.md` carries `{{ea.<key>}}` tokens the
 platform renders. Enforcement is the Azure Repos policy: build validation with the CI pipeline and the
 Platform Team as required reviewer on the protected paths.
 
