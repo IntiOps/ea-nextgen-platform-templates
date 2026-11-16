@@ -19,7 +19,7 @@ spec.loader.exec_module(catalog)
 def test_all_models_have_valid_typed_relationships():
     result = catalog.validate()
     assert len(result['blueprints']) == 12
-    assert len(result['components']) == 3
+    assert len(result['components']) == 4 and 'ai-kit' in result['components']
     assert result['blueprints']['rag-knowledge-assistant']['gaps']
 
 

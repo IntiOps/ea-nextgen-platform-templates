@@ -22,6 +22,23 @@ A manual CD run must pass `expectedDigest`, the package digest EA recorded and a
 Picking a CI run by hand is not an approval, and the default resource version is the latest run, so
 without it the verifier refuses before any cloud step (`Build.Reason == Manual`).
 
+## Resource groups and identity
+
+Each environment deploys into an existing resource group named by `resourceGroup` in
+`parameters.environments`. The platform team creates or selects that group; `main.bicep` is
+resource-group scoped and creates only the plan and the web app inside it. Each environment's service
+connection (workload identity federation, no secret) needs Contributor on its resource group alone.
+New infrastructure and infrastructure already in place are the same operation: deploy into a given group.
+
+## AI agent guardrails (AI kit v0)
+
+`AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.github/copilot-instructions.md` and
+`.eanextgen.d/rules/protected-paths.txt` come from `components/ai-kit` (byte-identical copies). They tell
+coding agents how to work in the generated repository and keep them off the paths that judge them
+(pipelines, infra, operations, the delivery contract test). `AGENTS.md` carries `{{ea.<key>}}` tokens the
+platform renders. Enforcement is the Azure Repos policy: build validation with the CI pipeline and the
+Platform Team as required reviewer on the protected paths.
+
 ## Artifact transport (ART-T1)
 
 The package always travels as the native Azure Pipelines artifact, and CD always verifies that run's

@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "kind": "reusable_component",
+  "id": "ai-kit",
+  "version": "0.1.0",
+  "name": "AI agent guardrail kit for generated repositories (v0)",
+  "deployable": false,
+  "files": [
+    {
+      "path": "components/ai-kit/AGENTS.md",
+      "sha256": "653e3a94d5a3f75a7229c75f3a04ce2b809e6f748c674b81e989888d27b76b5d"
+    },
+    {
+      "path": "components/ai-kit/CLAUDE.md",
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+    },
+    {
+      "path": "components/ai-kit/.claude/settings.json",
+      "sha256": "7ffd4d9e60183c35d373f5d828378f5e90c6b158adbbb0979bebd98badf441e4"
+    },
+    {
+      "path": "components/ai-kit/.github/copilot-instructions.md",
+      "sha256": "69510d1a5a95808f4e793e69be8b4c0dee11dc3afa1bccf6bbe7d069c0f9e3d3"
+    },
+    {
+      "path": "components/ai-kit/.eanextgen.d/rules/protected-paths.txt",
+      "sha256": "c0a4bdc4c62f90b7e8edefcb33df2a0e5c91a39a1c25d03c0cb33286554b9051"
+    },
+    {
+      "path": "components/ai-kit/.gitignore",
+      "sha256": "541d5976515872516c3a5a86a5d3e1721893da9182ba3d469cf51e7bd68c351e"
+    },
+    {
+      "path": "components/ai-kit/README.md",
+      "sha256": "4879d53240fffb8bcd351a1dedd630f4e4499c8ca8393cd06be48c5284d6ed07"
+    }
+  ]
+}

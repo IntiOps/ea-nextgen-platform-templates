@@ -1,0 +1,15 @@
+# Paths only the Platform Team changes. Read by: AGENTS.md (rule 4), .claude/settings.json (deny list),
+# and the Azure Repos required-reviewer policy (scripts/80-branch-policies.sh). Keep the three in sync.
+AGENTS.md
+CLAUDE.md
+template.yaml
+Makefile
+.claude/*
+.github/*
+.ea/*
+.eanextgen*
+pipelines/*
+infra/*
+operations/*
+tools/*
+tests/test_split_delivery.py
