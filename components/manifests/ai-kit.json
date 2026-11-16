@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "kind": "reusable_component",
   "id": "ai-kit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "name": "AI agent guardrail kit for generated repositories",
   "deployable": false,
   "files": [
@@ -76,7 +76,7 @@
     },
     {
       "path": "components/ai-kit/tools/guardrail.py",
-      "sha256": "60052a1601f8e26753b766448b292fca30fd90288425aa14996a6670eaca9425"
+      "sha256": "ae1a0d684d85eadcf81f79f71eebc81fc587144347271d1084b8e508cc7d18aa"
     }
   ]
 }
