@@ -1,0 +1,67 @@
+{
+  "rendering_contract": "1",
+  "package": "templates/azure/app-service/python-fastapi-split",
+  "values": {
+    "service": "orders-api",
+    "location": "swedencentral",
+    "architecture": {
+      "name": "orders",
+      "version": "3",
+      "digest": "sha256:0f0e0d",
+      "node_id": "orders-api"
+    },
+    "environments": [
+      {
+        "name": "dev",
+        "purpose": "development",
+        "resourceGroup": "rg-shared-dev",
+        "infraMode": "shared",
+        "existingPlanId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-shared-dev/providers/Microsoft.Web/serverfarms/plan-shared"
+      },
+      {
+        "name": "prod",
+        "purpose": "production",
+        "resourceGroup": "rg-legacy-prod",
+        "infraMode": "bind",
+        "appName": "orders-legacy-prod"
+      }
+    ]
+  },
+  "expect": {
+    "names": {
+      "ci_pipeline": "orders-api-ci",
+      "cd_pipeline": "orders-api-cd",
+      "artifact": "orders-api"
+    },
+    "agents_md_contains": [
+      "# AGENTS.md \u2014 orders-api",
+      "fastapi-azure-webapp-split"
+    ],
+    "cd_environments": [
+      {
+        "name": "dev",
+        "azureEnvironment": "orders-api-dev",
+        "serviceConnection": "sc-orders-api-dev",
+        "purpose": "development",
+        "location": "swedencentral",
+        "resourceGroup": "rg-shared-dev",
+        "infraMode": "shared",
+        "existingPlanId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-shared-dev/providers/Microsoft.Web/serverfarms/plan-shared",
+        "appName": "",
+        "artifactProvider": "azure_pipeline"
+      },
+      {
+        "name": "prod",
+        "azureEnvironment": "orders-api-prod",
+        "serviceConnection": "sc-orders-api-prod",
+        "purpose": "production",
+        "location": "swedencentral",
+        "resourceGroup": "rg-legacy-prod",
+        "infraMode": "bind",
+        "existingPlanId": "",
+        "appName": "orders-legacy-prod",
+        "artifactProvider": "azure_pipeline"
+      }
+    ]
+  }
+}
