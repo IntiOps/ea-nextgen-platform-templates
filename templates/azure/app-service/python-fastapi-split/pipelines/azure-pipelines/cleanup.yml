@@ -1,0 +1,166 @@
+# Gated cleanup (P4-05). Deletes what this template created in each environment, and nothing else.
+# It never runs on its own: no trigger, no PR trigger, no schedule. Queue it by hand with the same
+# environments chain as cd.yml and confirm set to exactly `delete <service>`.
+#
+# Per environment:
+#   list_<env>    no protected environment, so it runs without waiting. Lists the resources in
+#                 resourceGroup tagged BOTH managed_by=ea-nextgen-template AND instance=<service>-<env>,
+#                 prints them and publishes the list as the artifact cleanup-<env>.
+#   delete_<env>  a deployment job on the Azure DevOps environment: its approvals and checks apply when
+#                 the stage starts, so approvers see the published list first. It runs the same query
+#                 again, refuses if the set differs from the published list, then deletes exactly those
+#                 ids, web apps before App Service plans, and checks nothing tagged is left.
+# infraMode bind: the template owns nothing in that environment; it is skipped with a message.
+# infraMode shared: only the web app carries this instance's tags; existingPlanId is refused if listed.
+# Every job checks confirm before any cloud step. The resource group is never deleted (the platform
+# team owns it), no delete runs without the tag filter, and no resource id is typed by hand: every id
+# deleted comes from the tag-filtered query (operations/cleanup_resources.py re-checks each one).
+trigger: none
+pr: none
+
+parameters:
+  - name: service
+    displayName: Service name (lower-case kebab-case); environments are named <service>-<environment>
+    type: string
+    default: fastapi-webapp
+  - name: confirm
+    displayName: Type exactly "delete <service>" to allow the deletion
+    type: string
+    default: ''
+  - name: environments
+    displayName: Environments to clean up (same chain as cd.yml)
+    type: object
+    default:
+      - name: dev
+        azureEnvironment: fastapi-webapp-dev
+        serviceConnection: fastapi-webapp-dev
+        purpose: development
+        location: westeurope
+        resourceGroup: rg-fastapi-webapp-dev
+        infraMode: new
+        existingPlanId: ''
+        appName: ''
+        artifactProvider: azure_pipeline
+      - name: prod
+        azureEnvironment: fastapi-webapp-prod
+        serviceConnection: fastapi-webapp-prod
+        purpose: production
+        location: westeurope
+        resourceGroup: rg-fastapi-webapp-prod
+        infraMode: new
+        existingPlanId: ''
+        appName: ''
+        artifactProvider: azure_pipeline
+
+pool:
+  vmImage: ubuntu-24.04
+
+stages:
+  - ${{ each env in parameters.environments }}:
+      - ${{ if eq(env.infraMode, 'bind') }}:
+        - stage: skip_${{ replace(env.name, '-', '_') }}
+          displayName: Skip ${{ env.name }} (bind, the template owns nothing)
+          dependsOn: []
+          jobs:
+            - job: skip
+              steps:
+                - checkout: none
+                - bash: |
+                    echo "infraMode bind in ${{ env.name }}: the template owns nothing there, so nothing is deleted."
+                  displayName: Nothing to delete in ${{ env.name }}
+      - ${{ if ne(env.infraMode, 'bind') }}:
+        - stage: list_${{ replace(env.name, '-', '_') }}
+          displayName: List what would be deleted in ${{ env.name }}
+          dependsOn: []
+          jobs:
+            - job: list
+              displayName: List resources tagged for ${{ parameters.service }}-${{ env.name }}
+              steps:
+                - bash: |
+                    set -euo pipefail
+                    if [ "$CONFIRM" != "$EXPECTED" ]; then
+                      echo "##vso[task.logissue type=error]confirm must be exactly: $EXPECTED"
+                      exit 1
+                    fi
+                  displayName: Require confirm = "delete ${{ parameters.service }}"
+                  env:
+                    CONFIRM: ${{ parameters.confirm }}
+                    EXPECTED: delete ${{ parameters.service }}
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: List resources tagged managed_by and instance in ${{ env.resourceGroup }}
+                  env:
+                    RESOURCE_GROUP: ${{ env.resourceGroup }}
+                    INSTANCE: ${{ parameters.service }}-${{ env.name }}
+                    KEEP: ${{ env.existingPlanId }}
+                    OUT: $(Pipeline.Workspace)/cleanup-${{ env.name }}
+                  inputs:
+                    azureSubscription: ${{ env.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      mkdir -p "$OUT"
+                      az resource list --resource-group "$RESOURCE_GROUP" \
+                        --query "[?tags.managed_by=='ea-nextgen-template' && tags.instance=='$INSTANCE'].{id:id,name:name,type:type,tags:tags}" \
+                        -o json > "$OUT/resources.json"
+                      python3 operations/cleanup_resources.py review "$OUT/resources.json" \
+                        --instance "$INSTANCE" --resource-group "$RESOURCE_GROUP" --keep "$KEEP"
+                - publish: $(Pipeline.Workspace)/cleanup-${{ env.name }}
+                  artifact: cleanup-${{ env.name }}
+                  displayName: Publish the list approvers review
+        - stage: delete_${{ replace(env.name, '-', '_') }}
+          displayName: Delete in ${{ env.name }} after approval
+          dependsOn: list_${{ replace(env.name, '-', '_') }}
+          lockBehavior: sequential
+          jobs:
+            - deployment: delete
+              displayName: Delete the listed resources in ${{ env.name }}
+              environment: ${{ env.azureEnvironment }}
+              strategy:
+                runOnce:
+                  deploy:
+                    steps:
+                      - bash: |
+                          set -euo pipefail
+                          if [ "$CONFIRM" != "$EXPECTED" ]; then
+                            echo "##vso[task.logissue type=error]confirm must be exactly: $EXPECTED"
+                            exit 1
+                          fi
+                        displayName: Require confirm = "delete ${{ parameters.service }}"
+                        env:
+                          CONFIRM: ${{ parameters.confirm }}
+                          EXPECTED: delete ${{ parameters.service }}
+                      - checkout: self
+                      - download: current
+                        artifact: cleanup-${{ env.name }}
+                      - task: AzureCLI@2
+                        displayName: Re-list, compare with the approved list and delete exactly those ids
+                        env:
+                          RESOURCE_GROUP: ${{ env.resourceGroup }}
+                          INSTANCE: ${{ parameters.service }}-${{ env.name }}
+                          KEEP: ${{ env.existingPlanId }}
+                          APPROVED: $(Pipeline.Workspace)/cleanup-${{ env.name }}/resources.json
+                        inputs:
+                          azureSubscription: ${{ env.serviceConnection }}
+                          scriptType: bash
+                          scriptLocation: inlineScript
+                          inlineScript: |
+                            set -euo pipefail
+                            work=$(mktemp -d)
+                            az resource list --resource-group "$RESOURCE_GROUP" \
+                              --query "[?tags.managed_by=='ea-nextgen-template' && tags.instance=='$INSTANCE'].{id:id,name:name,type:type,tags:tags}" \
+                              -o json > "$work/current.json"
+                            python3 operations/cleanup_resources.py plan "$APPROVED" "$work/current.json" \
+                              --instance "$INSTANCE" --resource-group "$RESOURCE_GROUP" --keep "$KEEP" > "$work/ids.txt"
+                            while read -r id; do
+                              echo "deleting $id"
+                              az resource delete --ids "$id"
+                            done < "$work/ids.txt"
+                            az resource list --resource-group "$RESOURCE_GROUP" \
+                              --query "[?tags.managed_by=='ea-nextgen-template' && tags.instance=='$INSTANCE'].id" \
+                              -o tsv > "$work/left.txt"
+                            if grep -q . "$work/left.txt"; then
+                              echo "##vso[task.logissue type=error]still present after delete:"; cat "$work/left.txt"; exit 1
+                            fi
+                            echo "deleted $(wc -l < "$work/ids.txt") resource(s); resource group $RESOURCE_GROUP kept"

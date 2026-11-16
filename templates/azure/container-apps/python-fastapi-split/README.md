@@ -1,12 +1,13 @@
 # FastAPI on Azure Container Apps · separated CI/CD (draft)
 
 Same layered FastAPI service and AI kit as `templates/azure/app-service/python-fastapi-split`. This one
-ships as a container image to Azure Container Apps. There are two Azure Pipelines definitions in one repository:
+ships as a container image to Azure Container Apps. Two Azure Pipelines definitions in one repository deliver it, and a third, queued by hand, removes it:
 
 | Pipeline | File | Does | Never does |
 | --- | --- | --- | --- |
 | CI producer | `pipelines/azure-pipelines/ci.yml` | Tests, runs the guardrail, builds the image **once** (`operations/package_image.py`), saves it as `image.tar.gz` with `artifact.json` (SHA-256, image id, base image digest, commit, run id), publishes the delivery files | Deploy; log in to a registry; hold a cloud connection |
 | CD consumer | `pipelines/azure-pipelines/cd.yml` | Consumes one CI run through `resources.pipelines`, verifies the artifact, previews infrastructure per environment, waits for approval, loads the image, pushes it to that environment's registry, deploys it **by digest**, checks `/health` reports the CI commit | Build; check out source; run on push; deploy a tag |
+| Gated cleanup | `pipelines/azure-pipelines/cleanup.yml` | Queued by hand with `confirm: delete <service>`: lists the resources tagged `managed_by=ea-nextgen-template` and `instance=<service>-<env>`, waits for the environment approval, deletes exactly that list (dependents first) | Run on a trigger; delete the resource group; touch untagged, shared or `bind` resources |
 
 Each environment has two stages. `plan_<env>` verifies the artifact, then runs `what-if`, or in `bind`
 mode checks that the existing app exists and pulls from the registry. It uses no protected environment.
@@ -82,11 +83,22 @@ on port 8000 as uid 10001. Local build: `docker build -t service .` (revision th
 The image travels only as the native Azure Pipelines artifact. `template.yaml` declares no `transport`:
 Azure Blob and S3 copies are not implemented for images.
 
+## Cleanup and TTL report (P4-05)
+
+`pipelines/azure-pipelines/cleanup.yml` never runs on its own. Queue it by hand with the `cd.yml`
+environments and `confirm` set to exactly `delete <service>`. In each environment's resource group it
+deletes only the resources tagged BOTH `managed_by=ea-nextgen-template` and `instance=<service>-<env>`.
+`list_<env>` publishes that list without approval. `delete_<env>` is a deployment job on the
+environment, so the approval comes after the list. It refuses if the set changed, then deletes the
+container app, then the managed environment, then Log Analytics. `bind` environments are skipped. The
+resource group, shared environments and registry images are never touched.
+`operations/ttl_report.py` reports groups and resources whose `ea-ttl` tag has passed. Details:
+`operations/cleanup.md`. Contract tests: `tests/test_cleanup.py`, `tests/test_ttl_report.py`.
+
 ## AI agent guardrails
 
-The AI kit files are byte-identical copies of `components/ai-kit` (see the App Service split README).
-Two known gaps from that copy: `AGENTS.md` still says the service "runs on Azure App Service", and the
-protected paths do not list `Dockerfile` or `.dockerignore`. Both need an AI kit change.
+The AI kit files are byte-identical copies of `components/ai-kit` 0.3.0 (see the App Service split
+README). `AGENTS.md` is runtime-neutral, and `Dockerfile` and `.dockerignore` are protected paths.
 
 ## Status
 

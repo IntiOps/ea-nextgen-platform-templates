@@ -59,6 +59,12 @@ jobs:
         run: |
           python -m pip install -r templates/azure/container-apps/python-fastapi-split/app/requirements.txt -r templates/azure/container-apps/python-fastapi-split/tests/requirements.txt
           python -m pytest templates/azure/container-apps/python-fastapi-split/tests -q
+      - name: Gated cleanup and TTL report contract (P4-05)
+        run: |
+          for package in templates/azure/app-service/python-fastapi-split templates/azure/container-apps/python-fastapi-split; do
+            python -m pytest "$package/tests/test_cleanup.py" "$package/tests/test_ttl_report.py" -q
+          done
+          python -m pytest tests/test_render.py -q -k cleanup
       - name: Synthesize CDK Python and TypeScript without cloud credentials
         env:
           EA_ACCOUNT_ID: '123456789012'

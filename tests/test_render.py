@@ -142,3 +142,29 @@ def test_containerapps_new_mode_defaults(tmp_path):
     [env] = {p["name"]: p["default"] for p in cd["parameters"]}["environments"]
     assert env["infraMode"] == "new" and env["existingEnvironmentId"] == "" and env["registryIdentityId"] == ""
     assert "existingPlanId" not in env
+
+
+# ── Gated cleanup pipeline (P4-05): same service and environments chain as CD ──────────────────
+
+
+@pytest.mark.parametrize("contract", [FIXTURE, CONTAINERAPPS], ids=["app-service", "container-apps"])
+def test_cleanup_pipeline_gets_the_cd_environment_chain(tmp_path, contract):
+    out = tmp_path / "orders-api"
+    render_local.render(ROOT / contract["package"], out, contract["values"])
+    path = out / "pipelines/azure-pipelines/cleanup.yml"
+    cleanup = yaml.safe_load(path.read_text())
+    params = {p["name"]: p["default"] for p in cleanup["parameters"]}
+    assert params["service"] == "orders-api" and params["confirm"] == ""
+    assert params["environments"] == contract["expect"]["cd_environments"]
+    assert path.read_text().startswith("# Gated cleanup generated from ")
+    assert cleanup["trigger"] == "none" and cleanup["pr"] == "none"
+    assert "az group" not in path.read_text()
+
+
+def test_a_package_without_cleanup_pipeline_still_renders(tmp_path):
+    import shutil
+    package = tmp_path / "pkg"
+    shutil.copytree(ROOT / FIXTURE["package"], package, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    (package / "pipelines/azure-pipelines/cleanup.yml").unlink()
+    render_local.render(package, tmp_path / "out", FIXTURE["values"])
+    assert not (tmp_path / "out/pipelines/azure-pipelines/cleanup.yml").exists()

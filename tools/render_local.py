@@ -23,7 +23,8 @@ Rendering contract v1
      azure_web_app shares a plan (existingPlanId); azure_container_apps shares a managed environment
      (existingEnvironmentId) and adds registry (required) and registryIdentityId. The two
      pipeline files are re-emitted with a "generated" header; template.yaml keeps its text and only
-     its artifact name changes.
+     its artifact name changes. A gated cleanup pipeline next to the CD file (``cleanup.yml``, P4-05),
+     when the package has one, gets the same service and environments chain and the same header.
   4. Write .ea/package.json (provenance the platform verifies).
 """
 from __future__ import annotations
@@ -47,6 +48,8 @@ KEYS = {"service", "location", "package_id", "package_version", "package_commit"
 SKIP = {"__pycache__", ".pytest_cache", ".DS_Store"}
 SLUG = re.compile(r"^[a-z][a-z0-9-]{1,40}[a-z0-9]$")
 INFRA_MODES = {"new", "shared", "bind"}
+#: Gated cleanup pipeline (P4-05), next to the CD pipeline when the package has one.
+CLEANUP_PIPELINE = "cleanup.yml"
 #: Per variant runtime: the key infraMode shared needs, and extra environment keys (required, optional).
 RUNTIME_ENVIRONMENT_KEYS = {
     "azure_web_app": {"shared": "existingPlanId", "required": (), "optional": ()},
@@ -129,6 +132,10 @@ def _set_default(parameters: list[dict], name: str, value) -> None:
     raise RenderError(f"pipeline parameter {name} not found")
 
 
+def _set_default_value(parameters: list[dict], name: str):
+    return next(p["default"] for p in parameters if p.get("name") == name)
+
+
 def _environments(spec: dict, service: str, naming: dict, location: str, runtime: str) -> list[dict]:
     if runtime not in RUNTIME_ENVIRONMENT_KEYS:
         raise RenderError(f"no split environment keys for runtime {runtime}")
@@ -191,6 +198,17 @@ def _split_delivery(out: Path, spec: dict, service: str, location: str, provenan
     cd_path.write_text(header.format("CD consumer") +
                        "# Stage approvals are Azure DevOps environment checks; configure them on each environment.\n" +
                        yaml.dump(cd, Dumper=_BlockDumper, sort_keys=False, width=200, allow_unicode=True))
+
+    cleanup_path = cd_path.parent / CLEANUP_PIPELINE
+    if cleanup_path.is_file():
+        cleanup = yaml.safe_load(cleanup_path.read_text())
+        cleanup_parameters = cleanup.get("parameters") or []
+        _set_default(cleanup_parameters, "service", service)
+        _set_default(cleanup_parameters, "environments", _set_default_value(parameters, "environments"))
+        cleanup_path.write_text(header.format("Gated cleanup") +
+                                "# Deletes only resources tagged managed_by=ea-nextgen-template and instance=<service>-<env>,\n"
+                                "# after confirm and each environment's approval (see operations/cleanup.md).\n" +
+                                yaml.dump(cleanup, Dumper=_BlockDumper, sort_keys=False, width=200, allow_unicode=True))
 
     old = f"      name: {delivery['artifact']['name']}\n"
     text = manifest_path.read_text()
