@@ -46,7 +46,7 @@ variants:
       and checks configured on each environment. Connecting Azure DevOps grants nothing in Azure.
     - One existing resource group per environment, owned by the platform team. Each environment's
       service connection needs Contributor on that resource group only, never on the subscription.
-    - infraMode per environment (cd.yml): new (default) creates plan and app; shared needs existingPlanId
+    - infraMode per environment in cd.yml. new (default) creates plan and app; shared needs existingPlanId
       and Reader on that plan; bind needs appName of an existing web app and Website Contributor on it.
   files:
     application:
