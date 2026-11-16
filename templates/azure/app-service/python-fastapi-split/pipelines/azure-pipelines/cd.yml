@@ -14,6 +14,12 @@
 # Each environment deploys into its own existing resource group (resourceGroup): the platform team owns
 # the group and the service connection is Contributor on it alone, so this pipeline cannot create or
 # touch anything outside it.
+#
+# infraMode per environment (default new):
+#   new     the template creates the App Service plan and the web app in resourceGroup
+#   shared  the web app uses an existing plan (existingPlanId); the plan is never modified or listed as owned
+#   bind    the web app already exists (appName in resourceGroup): no infrastructure step runs at all,
+#           CD verifies the app exists and deploys the package to it
 # `lockBehavior: sequential` takes effect with an Exclusive Lock check on each environment: promotions
 # to one environment then run one at a time, in order.
 trigger: none
@@ -102,18 +108,31 @@ stages:
                     --expected-digest "${{ parameters.expectedDigest }}" \
                     --reason "$(Build.Reason)"
                 displayName: Verify the exact CI artifact
-              - task: AzureCLI@2
-                displayName: What-if for ${{ env.name }}
-                inputs:
-                  azureSubscription: ${{ env.serviceConnection }}
-                  scriptType: bash
-                  scriptLocation: inlineScript
-                  inlineScript: |
-                    set -euo pipefail
-                    az deployment group what-if --resource-group "${{ env.resourceGroup }}" \
-                      --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
-                      --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
-                                   location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)"
+              - ${{ if ne(env.infraMode, 'bind') }}:
+                - task: AzureCLI@2
+                  displayName: What-if for ${{ env.name }}
+                  inputs:
+                    azureSubscription: ${{ env.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      az deployment group what-if --resource-group "${{ env.resourceGroup }}" \
+                        --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
+                        --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
+                                     location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)" \
+                                     existingPlanId="${{ env.existingPlanId }}"
+              - ${{ if eq(env.infraMode, 'bind') }}:
+                - task: AzureCLI@2
+                  displayName: Verify the existing app for ${{ env.name }} (bind, no infrastructure change)
+                  inputs:
+                    azureSubscription: ${{ env.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      az webapp show --resource-group "${{ env.resourceGroup }}" --name "${{ env.appName }}" \
+                        --query "{name:name,state:state,host:defaultHostName}" -o table
       - stage: promote_${{ replace(env.name, '-', '_') }}
         displayName: Promote to ${{ env.name }}
         dependsOn: plan_${{ replace(env.name, '-', '_') }}
@@ -149,27 +168,44 @@ stages:
                           --expected-digest "${{ parameters.expectedDigest }}" \
                           --reason "$(Build.Reason)"
                       displayName: Re-verify after approval
-                    - task: AzureCLI@2
-                      displayName: Apply infrastructure for ${{ env.name }}
-                      inputs:
-                        azureSubscription: ${{ env.serviceConnection }}
-                        scriptType: bash
-                        scriptLocation: inlineScript
-                        inlineScript: |
-                          set -euo pipefail
-                          out=$(az deployment group create --resource-group "${{ env.resourceGroup }}" \
-                            --name "${{ parameters.service }}-${{ env.name }}-$(CI_RUN_ID)" \
-                            --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
-                            --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
-                                         location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)" \
-                            --query properties.outputs -o json)
-                          app_name=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["application_name"]["value"])')
-                          app_rg=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["resource_group_name"]["value"])')
-                          app_url=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["application_url"]["value"])')
-                          test -n "$app_name" && test -n "$app_rg" && test -n "$app_url"
-                          echo "##vso[task.setvariable variable=APP_NAME]$app_name"
-                          echo "##vso[task.setvariable variable=APP_RG]$app_rg"
-                          echo "##vso[task.setvariable variable=APP_URL]$app_url"
+                    - ${{ if ne(env.infraMode, 'bind') }}:
+                      - task: AzureCLI@2
+                        displayName: Apply infrastructure for ${{ env.name }}
+                        inputs:
+                          azureSubscription: ${{ env.serviceConnection }}
+                          scriptType: bash
+                          scriptLocation: inlineScript
+                          inlineScript: |
+                            set -euo pipefail
+                            out=$(az deployment group create --resource-group "${{ env.resourceGroup }}" \
+                              --name "${{ parameters.service }}-${{ env.name }}-$(CI_RUN_ID)" \
+                              --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
+                              --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
+                                           location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)" \
+                                           existingPlanId="${{ env.existingPlanId }}" \
+                              --query properties.outputs -o json)
+                            app_name=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["application_name"]["value"])')
+                            app_rg=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["resource_group_name"]["value"])')
+                            app_url=$(echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)["application_url"]["value"])')
+                            test -n "$app_name" && test -n "$app_rg" && test -n "$app_url"
+                            echo "##vso[task.setvariable variable=APP_NAME]$app_name"
+                            echo "##vso[task.setvariable variable=APP_RG]$app_rg"
+                            echo "##vso[task.setvariable variable=APP_URL]$app_url"
+                    - ${{ if eq(env.infraMode, 'bind') }}:
+                      - task: AzureCLI@2
+                        displayName: Resolve the existing app for ${{ env.name }} (bind)
+                        inputs:
+                          azureSubscription: ${{ env.serviceConnection }}
+                          scriptType: bash
+                          scriptLocation: inlineScript
+                          inlineScript: |
+                            set -euo pipefail
+                            host=$(az webapp show --resource-group "${{ env.resourceGroup }}" --name "${{ env.appName }}" \
+                              --query defaultHostName -o tsv)
+                            test -n "$host"
+                            echo "##vso[task.setvariable variable=APP_NAME]${{ env.appName }}"
+                            echo "##vso[task.setvariable variable=APP_RG]${{ env.resourceGroup }}"
+                            echo "##vso[task.setvariable variable=APP_URL]https://$host"
                     - task: AzureCLI@2
                       displayName: Deploy the same package to ${{ env.name }}
                       inputs:

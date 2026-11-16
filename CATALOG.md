@@ -31,14 +31,14 @@ the worker does not claim SQS/Service Bus, distributed delivery or automatic ret
 ## Architecture coverage
 
 For an independent AI architecture review exercise, see
-[Booking Rescue](demos/booking-rescue/README.md). Its defects are intentional;
+[Booking Rescue](docs/demo-guides/demo-1.md). Its defects are intentional;
 it is separate from workshops and is not an importable catalog composition.
 
-[Monolith or microservices](demos/monolith-or-microservices/README.md) is a second
+[Monolith or microservices](docs/demo-guides/demo-2.md) is a second
 independent exercise, with separate chat and agent paths. It tests architecture
 justification and deployment entrypoint consistency; it is not an importable package.
 
-[Email architecture board](demos/email-architecture-board/README.md) is a planning-only
+[Email architecture board](docs/demo-guides/demo-3.md) is a planning-only
 exercise for chat and agents: generate a Markdown plan from one README, then review its
 architecture decisions using the facilitator's separate filter. No runtime is included.
 

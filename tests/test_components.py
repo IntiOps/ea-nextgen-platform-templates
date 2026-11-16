@@ -23,8 +23,9 @@ def test_lambda_health_reports_exact_revision(monkeypatch):
     assert json.loads(response['body'])=={'status':'ok','revision':'a'*40}
 
 
-AI_KIT = ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json', '.github/copilot-instructions.md',
-          '.eanextgen.d/rules/protected-paths.txt', '.gitignore']
+AI_KIT = [entry['path'].removeprefix('components/ai-kit/')
+          for entry in json.loads((ROOT/'components/manifests/ai-kit.json').read_text())['files']
+          if not entry['path'].endswith('/README.md')]
 
 
 def test_ai_kit_copies_match_canonical_sources():
@@ -46,3 +47,27 @@ def test_ai_kit_protected_paths_agree_everywhere():
     assert '.eanextgen.d/rules/protected-paths.txt' in agents
     for path in listed - {'tests/test_split_delivery.py'}:
         assert f'`{path.rstrip("*").rstrip("/") if path.endswith("/*") else path}' in agents, path
+
+
+def test_ai_kit_checker_is_clean_on_the_template_and_catches_a_layer_violation(tmp_path):
+    import shutil
+    import subprocess
+    import sys
+    copy = tmp_path/'service'
+    shutil.copytree(ROOT/'templates/azure/app-service/python-fastapi-split', copy,
+                    ignore=shutil.ignore_patterns('__pycache__', '.pytest_cache'))
+    run = lambda: subprocess.run([sys.executable, 'tools/check_architecture.py', '--json'], cwd=copy,
+                                 capture_output=True, text=True)
+    clean = run()
+    assert clean.returncode == 0 and json.loads(clean.stdout)['violations'] == []
+    with (copy/'app/service/domain/greeting.py').open('a') as f:
+        f.write('\nfrom service.infrastructure.clock import SystemClock  # deliberate\n')
+    dirty = run()
+    [violation] = json.loads(dirty.stdout)['violations']
+    assert dirty.returncode == 1 and violation['rule'] == 'ARCH-001' and violation['imports'] == 'service.infrastructure.clock'
+
+
+def test_ai_kit_hooks_call_the_guardrail():
+    hooks = json.loads((ROOT/'components/ai-kit/.claude/settings.json').read_text())['hooks']
+    assert 'guardrail.py post-edit' in hooks['PostToolUse'][0]['hooks'][0]['command']
+    assert 'guardrail.py stop' in hooks['Stop'][0]['hooks'][0]['command']

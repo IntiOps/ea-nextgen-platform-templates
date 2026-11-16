@@ -1,23 +1,62 @@
 {
   "permissions": {
     "deny": [
-      "Edit(AGENTS.md)", "Write(AGENTS.md)",
-      "Edit(CLAUDE.md)", "Write(CLAUDE.md)",
-      "Edit(template.yaml)", "Write(template.yaml)",
-      "Edit(Makefile)", "Write(Makefile)",
-      "Edit(.claude/**)", "Write(.claude/**)",
-      "Edit(.github/**)", "Write(.github/**)",
-      "Edit(.ea/**)", "Write(.ea/**)",
-      "Edit(.eanextgen*)", "Write(.eanextgen*)",
-      "Edit(.eanextgen.d/**)", "Write(.eanextgen.d/**)",
-      "Edit(pipelines/**)", "Write(pipelines/**)",
-      "Edit(infra/**)", "Write(infra/**)",
-      "Edit(operations/**)", "Write(operations/**)",
-      "Edit(tools/**)", "Write(tools/**)",
-      "Edit(tests/test_split_delivery.py)", "Write(tests/test_split_delivery.py)",
+      "Edit(AGENTS.md)",
+      "Write(AGENTS.md)",
+      "Edit(CLAUDE.md)",
+      "Write(CLAUDE.md)",
+      "Edit(template.yaml)",
+      "Write(template.yaml)",
+      "Edit(Makefile)",
+      "Write(Makefile)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)",
+      "Edit(.github/**)",
+      "Write(.github/**)",
+      "Edit(.ea/**)",
+      "Write(.ea/**)",
+      "Edit(.eanextgen*)",
+      "Write(.eanextgen*)",
+      "Edit(.eanextgen.d/**)",
+      "Write(.eanextgen.d/**)",
+      "Edit(pipelines/**)",
+      "Write(pipelines/**)",
+      "Edit(infra/**)",
+      "Write(infra/**)",
+      "Edit(operations/**)",
+      "Write(operations/**)",
+      "Edit(tools/**)",
+      "Write(tools/**)",
+      "Edit(tests/test_split_delivery.py)",
+      "Write(tests/test_split_delivery.py)",
       "Read(.env*)",
       "Bash(az *)",
       "Bash(git push*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/guardrail.py post-edit",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/guardrail.py stop",
+            "timeout": 600
+          }
+        ]
+      }
     ]
   }
 }

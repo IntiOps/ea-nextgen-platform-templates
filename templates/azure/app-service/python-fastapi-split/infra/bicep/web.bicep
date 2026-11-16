@@ -8,9 +8,12 @@ param revision string
 @minValue(1)
 @maxValue(365)
 param retentionDays int
+@description('Empty: this template creates the App Service plan. Otherwise the resource id of an existing plan (infraMode shared).')
+param existingPlanId string = ''
+var createPlan = empty(existingPlanId)
 var production = purpose == 'production'
 var tags = { managed_by: 'ea-nextgen-template', owner_id: ownerId, instance: instance, purpose: purpose, revision: revision }
-resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
+resource plan 'Microsoft.Web/serverfarms@2024-04-01' = if (createPlan) {
   name: '${name}-plan'
   location: location
   kind: 'linux'
@@ -24,7 +27,7 @@ resource web 'Microsoft.Web/sites@2024-04-01' = {
   kind: 'app,linux'
   tags: tags
   properties: {
-    serverFarmId: plan.id
+    serverFarmId: createPlan ? plan.id : existingPlanId
     httpsOnly: true
     siteConfig: {
       linuxFxVersion: 'PYTHON|3.12'
@@ -60,4 +63,5 @@ resource logs 'Microsoft.Web/sites/config@2024-04-01' = {
 }
 output applicationName string = web.name
 output applicationUrl string = 'https://${web.properties.defaultHostName}'
-output resourceIds array = [plan.id, web.id]
+// Only what this template owns: an existing (shared) plan is never listed, so cleanup never touches it.
+output resourceIds array = createPlan ? [plan.id, web.id] : [web.id]

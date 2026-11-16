@@ -34,10 +34,27 @@ CD_TEXT = (ROOT / DELIVERY["cd_pipeline"]).read_text()
 CI_TEXT = (ROOT / DELIVERY["ci_pipeline"]).read_text()
 
 
+def _flatten(steps):
+    """Expand `${{ if ... }}:` entries into their steps, in order (infraMode new/shared vs bind)."""
+    flat = []
+    for step in steps:
+        if len(step) == 1 and next(iter(step)).startswith("${{ if"):
+            flat += _flatten(next(iter(step.values())))
+        else:
+            flat.append(step)
+    return flat
+
+
+def _branch(job, condition):
+    """The steps under one `${{ if <condition> }}:` entry of a job."""
+    steps = job["strategy"]["runOnce"]["deploy"]["steps"] if "strategy" in job else job["steps"]
+    return [s for step in steps if list(step) == [f"${{{{ if {condition} }}}}"] for s in step[f"${{{{ if {condition} }}}}"]]
+
+
 def _steps(job):
     if "strategy" in job:
-        return job["strategy"]["runOnce"]["deploy"]["steps"]
-    return job["steps"]
+        return _flatten(job["strategy"]["runOnce"]["deploy"]["steps"])
+    return _flatten(job["steps"])
 
 
 def _cd_stages():
@@ -142,7 +159,7 @@ def test_stage_names_are_safe_for_any_environment_name():
 
 def test_every_cloud_step_uses_its_environment_identity():
     cloud = [step for job in _cd_jobs().values() for step in _steps(job) if step.get("task", "").startswith("AzureCLI")]
-    assert len(cloud) == 3
+    assert len(cloud) == 5, "what-if, apply, deploy, and the two bind lookups"
     assert all(step["inputs"]["azureSubscription"] == "${{ env.serviceConnection }}" for step in cloud), "per-environment identity"
 
 
@@ -160,7 +177,30 @@ def test_infrastructure_stays_inside_each_environment_resource_group():
     assert all(e.get("resourceGroup") for e in envs), "every environment names its resource group"
     assert len({e["resourceGroup"] for e in envs}) == len(envs), "no resource group shared across environments"
     assert "deployment sub " not in CD_TEXT
-    assert CD_TEXT.count('--resource-group "${{ env.resourceGroup }}"') == 2, "what-if and apply target the same group"
+    assert "what-if --resource-group \"${{ env.resourceGroup }}\"" in CD_TEXT
+    assert "deployment group create --resource-group \"${{ env.resourceGroup }}\"" in CD_TEXT
+
+
+def test_bind_mode_never_changes_infrastructure():
+    """infraMode bind: the app already exists, so no deployment of any template may run."""
+    jobs = _cd_jobs()
+    for name in ("plan", "apply"):
+        bind = _branch(jobs[name], "eq(env.infraMode, 'bind')")
+        assert bind, f"{name} has a bind branch"
+        assert "az deployment" not in str(bind) and "az webapp show" in str(bind)
+        assert "--name \"${{ env.appName }}\"" in str(bind)
+        infra = _branch(jobs[name], "ne(env.infraMode, 'bind')")
+        assert "az deployment group" in str(infra)
+    deploy = [s for s in _steps(jobs["apply"]) if "webapp deploy" in str(s)]
+    assert len(deploy) == 1, "both modes deploy the same package with one step"
+
+
+def test_shared_mode_reuses_an_existing_plan_without_owning_it():
+    web = (ROOT / "infra/bicep/web.bicep").read_text()
+    assert "resource plan 'Microsoft.Web/serverfarms@2024-04-01' = if (createPlan)" in web
+    assert "serverFarmId: createPlan ? plan.id : existingPlanId" in web
+    assert "output resourceIds array = createPlan ? [plan.id, web.id] : [web.id]" in web
+    assert CD_TEXT.count('existingPlanId="${{ env.existingPlanId }}"') == 2, "what-if and apply pass the same plan"
 
 
 def test_app_service_does_not_rebuild_the_package():
@@ -179,7 +219,10 @@ def test_package_is_deterministic_and_records_its_run(tmp_path):
     assert _build(tmp_path, "a.zip") == _build(tmp_path, "b.zip")
     with zipfile.ZipFile(tmp_path / "a.zip") as archive:
         info = json.loads(archive.read("build-info.json"))
+        names = set(archive.namelist())
     assert info == {"revision": REVISION, "build_id": "42"}
+    assert {"main.py", "requirements.txt", "service/domain/greeting.py", "service/infrastructure/http/api.py"} <= names
+    assert not any("__pycache__" in name for name in names)
     with pytest.raises(ValueError):
         package.build(ROOT / "app", tmp_path / "c.zip", revision="main", build_id="42")
 
@@ -312,8 +355,10 @@ def test_cd_jobs_use_a_managed_python_before_any_script(job_name):
 
 @pytest.mark.parametrize("job_name", ["plan", "apply"])
 def test_cd_installs_transport_only_for_environments_that_use_it(job_name):
-    steps = _steps(_cd_jobs()[job_name])
-    [conditional] = [step for step in steps if any(str(key).startswith("${{ if") for key in step)]
+    job = _cd_jobs()[job_name]
+    steps = job["strategy"]["runOnce"]["deploy"]["steps"] if "strategy" in job else job["steps"]  # unexpanded
+    transport = [step for step in steps if any("artifactProvider" in str(key) for key in step)]
+    [conditional] = transport
     [(condition, inner)] = conditional.items()
     assert condition == "${{ if in(env.artifactProvider, 'azure_blob', 's3') }}"
     assert "ci/delivery/operations/transport-requirements.txt" in inner[0]["bash"], "from the CI run, not a checkout"
@@ -331,3 +376,18 @@ def test_no_storage_secret_or_latest_reference():
         lowered = text.lower()
         for forbidden in ("accountkey", "sig=", "aws_secret_access_key", "sas_token", "latest"):
             assert forbidden not in lowered
+
+
+def test_ci_runs_the_guardrail_on_the_whole_change_and_keeps_its_evidence():
+    """Rule violations fail the build; protected paths and size become needs_review for the required reviewer."""
+    [job] = [job for stage in CI["stages"] for job in stage["jobs"]]
+    steps = job["steps"]
+    assert steps[0].get("fetchDepth") == 0, "a shallow clone cannot measure the change"
+    scripts = [step.get("bash", "") for step in steps]
+    [guard] = [i for i, s in enumerate(scripts) if "tools/guardrail.py" in s]
+    assert "check --ci --no-tests --base" in scripts[guard] and "--json" in scripts[guard]
+    tests = next(i for i, s in enumerate(scripts) if "pytest" in s)
+    build = next(i for i, s in enumerate(scripts) if "operations/package.py" in s)
+    assert tests < guard < build, "after the tests, before anything is built"
+    [evidence] = [s for s in steps if s.get("artifact") == "evidence"]
+    assert "succeededOrFailed()" in evidence["condition"], "evidence survives a failed guardrail"

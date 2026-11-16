@@ -8,3 +8,11 @@ packages:
     path: templates/azure/app-service/python-fastapi
     status: candidate
     cloud_verified: false
+  - id: fastapi-azure-webapp-split
+    version: 0.4.0
+    cloud: azure
+    ecosystem: app-service
+    stack: python-fastapi
+    path: templates/azure/app-service/python-fastapi-split
+    status: draft
+    cloud_verified: false

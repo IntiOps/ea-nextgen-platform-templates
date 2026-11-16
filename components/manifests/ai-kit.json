@@ -2,37 +2,81 @@
   "schema_version": "1.0",
   "kind": "reusable_component",
   "id": "ai-kit",
-  "version": "0.1.0",
-  "name": "AI agent guardrail kit for generated repositories (v0)",
+  "version": "0.2.0",
+  "name": "AI agent guardrail kit for generated repositories",
   "deployable": false,
   "files": [
     {
-      "path": "components/ai-kit/AGENTS.md",
-      "sha256": "653e3a94d5a3f75a7229c75f3a04ce2b809e6f748c674b81e989888d27b76b5d"
-    },
-    {
-      "path": "components/ai-kit/CLAUDE.md",
-      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
-    },
-    {
       "path": "components/ai-kit/.claude/settings.json",
-      "sha256": "7ffd4d9e60183c35d373f5d828378f5e90c6b158adbbb0979bebd98badf441e4"
+      "sha256": "e55cb8b3a826d778b7f44cf7e0ea1926df63731d44270fa01e89206a34fb7cdb"
     },
     {
-      "path": "components/ai-kit/.github/copilot-instructions.md",
-      "sha256": "69510d1a5a95808f4e793e69be8b4c0dee11dc3afa1bccf6bbe7d069c0f9e3d3"
+      "path": "components/ai-kit/.eanextgen.d/rules/architecture-rules.toml",
+      "sha256": "6cd23fab084e077a835785e6f56f28d8c45ce2f8ba3409f239bf32bf3a6fb419"
     },
     {
       "path": "components/ai-kit/.eanextgen.d/rules/protected-paths.txt",
       "sha256": "c0a4bdc4c62f90b7e8edefcb33df2a0e5c91a39a1c25d03c0cb33286554b9051"
     },
     {
+      "path": "components/ai-kit/.eanextgen.d/standards/analyse.prompt.md",
+      "sha256": "ae8412c8700dfe800ab663af4fb7f86a7e87c737de91d43a10029b34151abb98"
+    },
+    {
+      "path": "components/ai-kit/.eanextgen.d/standards/bind-architecture.prompt.md",
+      "sha256": "10f1122a29056b823d8e55b705cdb4141954259638e7e8efeb53142ec8e71e89"
+    },
+    {
+      "path": "components/ai-kit/.eanextgen.d/standards/bootstrap-review.prompt.md",
+      "sha256": "349fc5e76a0d935cb36fb25269f64f033fe17985295d876d885daa3c995812fc"
+    },
+    {
+      "path": "components/ai-kit/.eanextgen.d/standards/feature.prompt.md",
+      "sha256": "5940fc44b9d5886faec85085aeb15c27f4acb75ed6a9c7fba0d4cedf259e679d"
+    },
+    {
+      "path": "components/ai-kit/.eanextgen.d/standards/infra-request.prompt.md",
+      "sha256": "1a5ac2844ead7054167132ffc3089832926382244cead2cb02587f9bbe2a8537"
+    },
+    {
+      "path": "components/ai-kit/.eanextgen.d/standards/review.prompt.md",
+      "sha256": "002108f89f7d859bc3b6afc8673e733661684607495e7dc9008d5aa63c94894d"
+    },
+    {
+      "path": "components/ai-kit/.github/copilot-instructions.md",
+      "sha256": "69510d1a5a95808f4e793e69be8b4c0dee11dc3afa1bccf6bbe7d069c0f9e3d3"
+    },
+    {
       "path": "components/ai-kit/.gitignore",
       "sha256": "541d5976515872516c3a5a86a5d3e1721893da9182ba3d469cf51e7bd68c351e"
     },
     {
+      "path": "components/ai-kit/AGENTS.md",
+      "sha256": "12810f87a1c65815610195e664df31cbb41ae009f8724fd984964ff7a65d84ea"
+    },
+    {
+      "path": "components/ai-kit/CLAUDE.md",
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+    },
+    {
+      "path": "components/ai-kit/Makefile",
+      "sha256": "daf0abd80598ff54c76eb5f78a263bd6a63d65c8836bc810a5cf5eea83cd6e3b"
+    },
+    {
       "path": "components/ai-kit/README.md",
-      "sha256": "4879d53240fffb8bcd351a1dedd630f4e4499c8ca8393cd06be48c5284d6ed07"
+      "sha256": "3139457e75740bb4d0396afebc841c8a3ff3e351b8b817ac7e44090d31a8b827"
+    },
+    {
+      "path": "components/ai-kit/docs/adr/0001-service-boundaries.md",
+      "sha256": "469d43e3c0a119c6747f669b35f2858dbaa2246c83f05507e0a24bdd348b6ec5"
+    },
+    {
+      "path": "components/ai-kit/tools/check_architecture.py",
+      "sha256": "24ab7d12f1437162cb9347a7eac679150e7366f1f0b92790f60dbaaec98affd1"
+    },
+    {
+      "path": "components/ai-kit/tools/guardrail.py",
+      "sha256": "60052a1601f8e26753b766448b292fca30fd90288425aa14996a6670eaca9425"
     }
   ]
 }

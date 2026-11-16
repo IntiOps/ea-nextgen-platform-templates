@@ -9,10 +9,12 @@ param location string = resourceGroup().location
 param purpose string
 param revision string
 param retentionDays int = 7
+@description('infraMode shared: resource id of an existing App Service plan. Empty in infraMode new.')
+param existingPlanId string = ''
 var suffix = uniqueString(resourceGroup().id, ownerId, instance)
 module web './web.bicep' = {
   name: 'web-${instance}'
-  params: { name: 'ea-${instance}-${suffix}', location: location, purpose: purpose, ownerId: ownerId, instance: instance, revision: revision, retentionDays: retentionDays }
+  params: { name: 'ea-${instance}-${suffix}', location: location, purpose: purpose, ownerId: ownerId, instance: instance, revision: revision, retentionDays: retentionDays, existingPlanId: existingPlanId }
 }
 output application_name string = web.outputs.applicationName
 output application_url string = web.outputs.applicationUrl

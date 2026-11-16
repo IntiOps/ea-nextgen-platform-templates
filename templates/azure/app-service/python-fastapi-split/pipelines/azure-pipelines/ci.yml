@@ -37,6 +37,7 @@ stages:
         steps:
           - checkout: self
             persistCredentials: false
+            fetchDepth: 0  # the guardrail measures the change against the target branch
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '3.12'
@@ -45,6 +46,16 @@ stages:
               python -m pip install -r "${{ parameters.packageRoot }}/app/requirements.txt" -r "${{ parameters.packageRoot }}/tests/requirements.txt"
               python -m pytest "${{ parameters.packageRoot }}/tests" -q
             displayName: Test application and delivery contract
+          # Architecture rules, weakened tests, protected paths and change budget, as evidence. Protected paths
+          # and budget are needs_review here (the required reviewer decides); rule violations fail the build.
+          - bash: |
+              set -euo pipefail
+              echo "##vso[task.setvariable variable=GUARDRAIL_RAN]true"
+              base="$(Build.SourceVersion)~1"
+              if [ -n "${SYSTEM_PULLREQUEST_TARGETBRANCH:-}" ]; then base="origin/${SYSTEM_PULLREQUEST_TARGETBRANCH#refs/heads/}"; fi
+              python "${{ parameters.packageRoot }}/tools/guardrail.py" check --ci --no-tests --base "$base" \
+                --json "$(Build.ArtifactStagingDirectory)/evidence/guardrail.json"
+            displayName: Architecture guardrail
           - bash: |
               set -euo pipefail
               site="$(Agent.TempDirectory)/site-packages"
@@ -85,3 +96,7 @@ stages:
           - publish: $(Build.ArtifactStagingDirectory)/delivery
             artifact: delivery
             displayName: Publish delivery files
+          - publish: $(Build.ArtifactStagingDirectory)/evidence
+            artifact: evidence
+            displayName: Publish guardrail evidence
+            condition: and(succeededOrFailed(), eq(variables['GUARDRAIL_RAN'], 'true'))
