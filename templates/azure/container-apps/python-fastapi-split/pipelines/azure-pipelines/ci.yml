@@ -1,0 +1,89 @@
+# CI producer (separated CI/CD). Tests the service and builds its container image ONCE per commit, then
+# publishes it with everything CD needs. It never deploys, never logs in to a registry and holds no
+# cloud service connection.
+#
+# Published artifacts, all from this one run:
+#   <artifactName>  image.tar.gz (docker save, gzip) and artifact.json (SHA-256, image id, base image
+#                   digest, commit, run id)
+#   delivery        Bicep modules, artifact verifier, image reference helper and smoke test: CD runs
+#                   these exact files and never checks out a branch that could have moved since this build.
+trigger:
+  branches:
+    include: [main]
+# `pr:` applies to GitHub-hosted repositories. On Azure Repos it is ignored: PR validation is a build
+# validation branch policy pointing at this pipeline (EA reports whether it exists: split policy check).
+pr:
+  branches:
+    include: [main]
+
+parameters:
+  - name: packageRoot
+    displayName: Path of this package inside the repository
+    type: string
+    default: .
+  - name: artifactName
+    displayName: Artifact and image repository name (lower-case kebab-case; digest recorded separately)
+    type: string
+    default: fastapi-containerapp
+
+pool:
+  vmImage: ubuntu-24.04
+
+stages:
+  - stage: build
+    displayName: Test and build once
+    jobs:
+      - job: build
+        steps:
+          - checkout: self
+            persistCredentials: false
+            fetchDepth: 0  # the guardrail measures the change against the target branch
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+          - bash: |
+              set -euo pipefail
+              python -m pip install -r "${{ parameters.packageRoot }}/app/requirements.txt" -r "${{ parameters.packageRoot }}/tests/requirements.txt"
+              python -m pytest "${{ parameters.packageRoot }}/tests" -q
+            displayName: Test application and delivery contract
+          # Architecture rules, weakened tests, protected paths and change budget, as evidence. Protected paths
+          # and budget are needs_review here (the required reviewer decides); rule violations fail the build.
+          - bash: |
+              set -euo pipefail
+              echo "##vso[task.setvariable variable=GUARDRAIL_RAN]true"
+              base="$(Build.SourceVersion)~1"
+              if [ -n "${SYSTEM_PULLREQUEST_TARGETBRANCH:-}" ]; then base="origin/${SYSTEM_PULLREQUEST_TARGETBRANCH#refs/heads/}"; fi
+              python "${{ parameters.packageRoot }}/tools/guardrail.py" check --ci --no-tests --base "$base" \
+                --json "$(Build.ArtifactStagingDirectory)/evidence/guardrail.json"
+            displayName: Architecture guardrail
+          # The only image build of this delivery. The base image is pinned to the digest pulled here
+          # and recorded; the tarball's SHA-256 is what every environment verifies.
+          - bash: |
+              set -euo pipefail
+              python "${{ parameters.packageRoot }}/operations/package_image.py" \
+                --name "${{ parameters.artifactName }}" \
+                --revision "$(Build.SourceVersion)" \
+                --build-id "$(Build.BuildId)" \
+                --source-date-epoch "$(git log -1 --format=%ct "$(Build.SourceVersion)")" \
+                --output "$(Build.ArtifactStagingDirectory)/image/image.tar.gz" \
+                --manifest "$(Build.ArtifactStagingDirectory)/image/artifact.json"
+            displayName: Build the image once
+          - bash: |
+              set -euo pipefail
+              out="$(Build.ArtifactStagingDirectory)/delivery"
+              mkdir -p "$out/infra" "$out/operations" "$out/tests"
+              cp "${{ parameters.packageRoot }}"/infra/bicep/*.bicep "$out/infra/"
+              cp "${{ parameters.packageRoot }}/operations/verify_artifact.py" "$out/operations/"
+              cp "${{ parameters.packageRoot }}/operations/image_reference.py" "$out/operations/"
+              cp "${{ parameters.packageRoot }}/tests/smoke.py" "$out/tests/"
+            displayName: Stage delivery files from this commit
+          - publish: $(Build.ArtifactStagingDirectory)/image
+            artifact: ${{ parameters.artifactName }}
+            displayName: Publish the image tarball
+          - publish: $(Build.ArtifactStagingDirectory)/delivery
+            artifact: delivery
+            displayName: Publish delivery files
+          - publish: $(Build.ArtifactStagingDirectory)/evidence
+            artifact: evidence
+            displayName: Publish guardrail evidence
+            condition: and(succeededOrFailed(), eq(variables['GUARDRAIL_RAN'], 'true'))

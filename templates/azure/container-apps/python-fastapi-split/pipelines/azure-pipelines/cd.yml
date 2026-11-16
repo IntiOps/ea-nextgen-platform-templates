@@ -1,0 +1,257 @@
+# CD consumer (separated CI/CD). Promotes ONE exact CI run's container image through the environments,
+# in order. It never builds, never checks out source, and has no push trigger: it runs when the CI
+# producer completes on the listed branches, or manually against a CI run chosen explicitly. A manual
+# run must pass expectedDigest (the tarball digest EA recorded and a person approved); without it the
+# verifier refuses.
+#
+# Per environment, two stages:
+#   plan_<env>     verify the artifact and preview the infrastructure change (what-if) for THAT
+#                  environment, or check the existing app in bind. It uses no protected environment, so
+#                  it runs without waiting and its output is visible before anyone approves.
+#   promote_<env>  declares the Azure DevOps environment. Azure DevOps evaluates approvals and checks
+#                  when a stage starts, so this approval comes AFTER the preview. Then it re-verifies,
+#                  loads the image, pushes it to the environment's registry, deploys it BY DIGEST and
+#                  checks /health reports the CI commit.
+# The image bytes are the same in every environment; each environment's registry and infrastructure
+# are its own. Each environment deploys into its own existing resource group (resourceGroup): the
+# platform team owns the group and the service connection is Contributor on it alone.
+#
+# infraMode per environment (default new):
+#   new     the template creates Log Analytics, the Container Apps managed environment and the app
+#   shared  the app joins an existing managed environment (existingEnvironmentId, any resource group);
+#           that environment is never modified or listed as owned
+#   bind    the app already exists (appName in resourceGroup): no infrastructure step runs at all,
+#           CD only points the app at the new image digest
+# registry is the login server of the environment's existing, platform-owned Azure Container Registry.
+# `lockBehavior: sequential` takes effect with an Exclusive Lock check on each environment.
+trigger: none
+pr: none
+
+parameters:
+  - name: service
+    displayName: Service name (lower-case kebab-case); environments are named <service>-<environment>
+    type: string
+    default: fastapi-containerapp
+  - name: artifactName
+    type: string
+    default: fastapi-containerapp
+  - name: expectedDigest
+    displayName: SHA-256 of the image tarball EA recorded and a person approved (empty only when not orchestrated by EA)
+    type: string
+    default: ''
+  - name: ownerId
+    type: string
+    default: ea-nextgen
+  - name: environments
+    displayName: Promotion chain, in order (from the EA delivery topology)
+    type: object
+    default:
+      - name: dev
+        azureEnvironment: fastapi-containerapp-dev
+        serviceConnection: fastapi-containerapp-dev
+        purpose: development
+        location: westeurope
+        resourceGroup: rg-fastapi-containerapp-dev
+        infraMode: new
+        existingEnvironmentId: ''
+        appName: ''
+        registry: acrplatformdev.azurecr.io
+        registryIdentityId: ''
+        # The image travels as the native Azure Pipelines artifact only (no external transport).
+        artifactProvider: azure_pipeline
+      - name: prod
+        azureEnvironment: fastapi-containerapp-prod
+        serviceConnection: fastapi-containerapp-prod
+        purpose: production
+        location: westeurope
+        resourceGroup: rg-fastapi-containerapp-prod
+        infraMode: new
+        existingEnvironmentId: ''
+        appName: ''
+        registry: acrplatformprod.azurecr.io
+        registryIdentityId: ''
+        artifactProvider: azure_pipeline
+
+resources:
+  pipelines:
+    - pipeline: ci
+      source: fastapi-containerapp-ci
+      trigger:
+        branches:
+          include: [main]
+
+pool:
+  vmImage: ubuntu-24.04
+
+variables:
+  CI_COMMIT: $(resources.pipeline.ci.sourceCommit)
+  CI_RUN_ID: $(resources.pipeline.ci.runID)
+
+stages:
+  - ${{ each env in parameters.environments }}:
+      - stage: plan_${{ replace(env.name, '-', '_') }}
+        displayName: Preview ${{ env.name }}
+        jobs:
+          - job: plan
+            displayName: Verify artifact and preview infrastructure for ${{ env.name }}
+            steps:
+              - checkout: none
+              - task: UsePythonVersion@0
+                displayName: Use a managed Python (the image's system Python is externally managed, PEP 668)
+                inputs:
+                  versionSpec: '3.12'
+              - download: ci
+                artifact: ${{ parameters.artifactName }}
+              - download: ci
+                artifact: delivery
+              - bash: |
+                  set -euo pipefail
+                  python3 "$(Pipeline.Workspace)/ci/delivery/operations/verify_artifact.py" \
+                    --package "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/image.tar.gz" \
+                    --manifest "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/artifact.json" \
+                    --revision "$(CI_COMMIT)" --build-id "$(CI_RUN_ID)" \
+                    --expected-digest "${{ parameters.expectedDigest }}" \
+                    --reason "$(Build.Reason)"
+                displayName: Verify the exact CI artifact
+              - ${{ if ne(env.infraMode, 'bind') }}:
+                - task: AzureCLI@2
+                  displayName: What-if for ${{ env.name }}
+                  inputs:
+                    azureSubscription: ${{ env.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      # The digest exists only once promote has pushed the image; the preview names the
+                      # unique tag that digest will come from. Promote deploys the digest, never the tag.
+                      az deployment group what-if --resource-group "${{ env.resourceGroup }}" \
+                        --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
+                        --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
+                                     location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)" \
+                                     image="${{ env.registry }}/${{ parameters.artifactName }}:$(CI_COMMIT)-$(CI_RUN_ID)" \
+                                     registryServer="${{ env.registry }}" registryIdentityId="${{ env.registryIdentityId }}" \
+                                     existingEnvironmentId="${{ env.existingEnvironmentId }}"
+              - ${{ if eq(env.infraMode, 'bind') }}:
+                - task: AzureCLI@2
+                  displayName: Verify the existing app for ${{ env.name }} (bind, no infrastructure change)
+                  inputs:
+                    azureSubscription: ${{ env.serviceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      az extension add --name containerapp --upgrade --yes --only-show-errors
+                      az containerapp show --resource-group "${{ env.resourceGroup }}" --name "${{ env.appName }}" \
+                        --query "{name:name,fqdn:properties.configuration.ingress.fqdn,image:properties.template.containers[0].image}" -o table
+                      servers=$(az containerapp show --resource-group "${{ env.resourceGroup }}" --name "${{ env.appName }}" \
+                        --query "properties.configuration.registries[].server" -o tsv)
+                      if ! printf '%s\n' "$servers" | grep -Fxq "${{ env.registry }}"; then
+                        echo "##vso[task.logissue type=error]${{ env.appName }} does not pull from ${{ env.registry }}; the platform team must configure that registry with a managed identity first."
+                        exit 1
+                      fi
+      - stage: promote_${{ replace(env.name, '-', '_') }}
+        displayName: Promote to ${{ env.name }}
+        dependsOn: plan_${{ replace(env.name, '-', '_') }}
+        lockBehavior: sequential
+        jobs:
+          - deployment: apply
+            displayName: Push and deploy to ${{ env.name }}
+            environment: ${{ env.azureEnvironment }}
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - task: UsePythonVersion@0
+                      displayName: Use a managed Python (the image's system Python is externally managed, PEP 668)
+                      inputs:
+                        versionSpec: '3.12'
+                    - download: ci
+                      artifact: ${{ parameters.artifactName }}
+                    - download: ci
+                      artifact: delivery
+                    - bash: |
+                        set -euo pipefail
+                        python3 "$(Pipeline.Workspace)/ci/delivery/operations/verify_artifact.py" \
+                          --package "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/image.tar.gz" \
+                          --manifest "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/artifact.json" \
+                          --revision "$(CI_COMMIT)" --build-id "$(CI_RUN_ID)" \
+                          --expected-digest "${{ parameters.expectedDigest }}" \
+                          --reason "$(Build.Reason)"
+                      displayName: Re-verify after approval
+                    - bash: |
+                        set -euo pipefail
+                        art="$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}"
+                        docker load --input "$art/image.tar.gz"
+                        local_ref=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["image"])' "$art/artifact.json")
+                        loaded=$(docker image inspect --format '{{.Id}}' "$local_ref")
+                        python3 "$(Pipeline.Workspace)/ci/delivery/operations/verify_artifact.py" \
+                          --package "$art/image.tar.gz" --manifest "$art/artifact.json" \
+                          --revision "$(CI_COMMIT)" --build-id "$(CI_RUN_ID)" \
+                          --expected-digest "${{ parameters.expectedDigest }}" \
+                          --reason "$(Build.Reason)" --loaded-image-id "$loaded"
+                        echo "##vso[task.setvariable variable=LOCAL_IMAGE]$local_ref"
+                      displayName: Load the verified image and check it is the one CI built
+                    - task: AzureCLI@2
+                      displayName: Push the image to the ${{ env.name }} registry and resolve its digest
+                      inputs:
+                        azureSubscription: ${{ env.serviceConnection }}
+                        scriptType: bash
+                        scriptLocation: inlineScript
+                        inlineScript: |
+                          set -euo pipefail
+                          registry="${{ env.registry }}"
+                          repository="$registry/${{ parameters.artifactName }}"
+                          target="$repository:$(CI_COMMIT)-$(CI_RUN_ID)"
+                          az acr login --name "${registry%%.*}"
+                          docker tag "$(LOCAL_IMAGE)" "$target"
+                          docker push "$target"
+                          image_ref=$(docker image inspect --format '{{json .RepoDigests}}' "$target" \
+                            | python3 "$(Pipeline.Workspace)/ci/delivery/operations/image_reference.py" --repository "$repository")
+                          echo "Deploying $image_ref (pushed as $target)"
+                          echo "##vso[task.setvariable variable=IMAGE_REF]$image_ref"
+                    - ${{ if ne(env.infraMode, 'bind') }}:
+                      - task: AzureCLI@2
+                        displayName: Apply infrastructure and deploy the image digest to ${{ env.name }}
+                        inputs:
+                          azureSubscription: ${{ env.serviceConnection }}
+                          scriptType: bash
+                          scriptLocation: inlineScript
+                          inlineScript: |
+                            set -euo pipefail
+                            out=$(az deployment group create --resource-group "${{ env.resourceGroup }}" \
+                              --name "${{ parameters.service }}-${{ env.name }}-$(CI_RUN_ID)" \
+                              --template-file "$(Pipeline.Workspace)/ci/delivery/infra/main.bicep" \
+                              --parameters instance="${{ parameters.service }}-${{ env.name }}" ownerId="${{ parameters.ownerId }}" \
+                                           location="${{ env.location }}" purpose="${{ env.purpose }}" revision="$(CI_COMMIT)" \
+                                           image="$(IMAGE_REF)" \
+                                           registryServer="${{ env.registry }}" registryIdentityId="${{ env.registryIdentityId }}" \
+                                           existingEnvironmentId="${{ env.existingEnvironmentId }}" \
+                              --query properties.outputs -o json)
+                            field() { echo "$out" | python3 -c 'import json,sys;print(json.load(sys.stdin)[sys.argv[1]]["value"])' "$1"; }
+                            app_url=$(field application_url)
+                            deployed=$(field image)
+                            test -n "$app_url"
+                            if [ "$deployed" != "$(IMAGE_REF)" ]; then echo "deployed image $deployed is not $(IMAGE_REF)"; exit 1; fi
+                            echo "Container app identity principal id (empty with a user-assigned identity): $(field principal_id)"
+                            echo "##vso[task.setvariable variable=APP_URL]$app_url"
+                    - ${{ if eq(env.infraMode, 'bind') }}:
+                      - task: AzureCLI@2
+                        displayName: Point the existing app at the image digest (bind, no infrastructure change)
+                        inputs:
+                          azureSubscription: ${{ env.serviceConnection }}
+                          scriptType: bash
+                          scriptLocation: inlineScript
+                          inlineScript: |
+                            set -euo pipefail
+                            az extension add --name containerapp --upgrade --yes --only-show-errors
+                            az containerapp update --resource-group "${{ env.resourceGroup }}" --name "${{ env.appName }}" \
+                              --image "$(IMAGE_REF)" --output none
+                            deployed=$(az containerapp show --resource-group "${{ env.resourceGroup }}" --name "${{ env.appName }}" \
+                              --query "properties.template.containers[0].image" -o tsv)
+                            if [ "$deployed" != "$(IMAGE_REF)" ]; then echo "deployed image $deployed is not $(IMAGE_REF)"; exit 1; fi
+                            fqdn=$(az containerapp show --resource-group "${{ env.resourceGroup }}" --name "${{ env.appName }}" \
+                              --query properties.configuration.ingress.fqdn -o tsv)
+                            test -n "$fqdn"
+                            echo "##vso[task.setvariable variable=APP_URL]https://$fqdn"
+                    - bash: python3 "$(Pipeline.Workspace)/ci/delivery/tests/smoke.py" --url "$(APP_URL)" --revision "$(CI_COMMIT)"
+                      displayName: Verify the promoted revision is serving
