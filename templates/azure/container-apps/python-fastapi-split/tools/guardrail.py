@@ -33,6 +33,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_architecture import ROOT, check, load_rules  # noqa: E402
 
 PROTECTED = ROOT / ".eanextgen.d" / "rules" / "protected-paths.txt"
+#: git's empty tree: what the first commit of a repository is compared with (it has no parent).
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
 def _git(*args: str) -> str | None:
@@ -51,12 +53,22 @@ def is_protected(path: str, patterns: list[str]) -> bool:
     return any(fnmatchcase(path, p) or (p.endswith("/*") and path.startswith(p[:-1])) for p in patterns)
 
 
+def base_ref(base: str) -> str | None:
+    """What to compare HEAD with: the merge base with ``base``; for the first commit of a repository (its
+    parent does not exist) the empty tree, so the whole bootstrap is the change; otherwise unknown."""
+    if _git("rev-parse", "--verify", "--quiet", f"{base}^{{commit}}") is not None:
+        return (_git("merge-base", base, "HEAD") or "").strip() or base
+    if (_git("rev-list", "--count", "HEAD") or "").strip() == "1":
+        return EMPTY_TREE
+    return None
+
+
 def changes(base: str | None) -> dict[str, int] | None:
     """Changed files and their added+removed lines. Agent mode: working tree (and untracked) against HEAD.
     CI mode: HEAD against the merge base with ``base``."""
     if base:
-        merge_base = (_git("merge-base", base, "HEAD") or "").strip()
-        numstat = _git("diff", "--numstat", "--relative", merge_base or base, "HEAD") if (merge_base or base) else None
+        ref = base_ref(base)
+        numstat = _git("diff", "--numstat", "--relative", ref, "HEAD") if ref else None
     else:
         numstat = _git("diff", "--numstat", "--relative", "HEAD")
     if numstat is None:
@@ -90,9 +102,7 @@ def assertions(source: str) -> int:
 
 
 def weakened_tests(changed: dict[str, int], base: str | None) -> list[str]:
-    ref = "HEAD"
-    if base:
-        ref = (_git("merge-base", base, "HEAD") or "").strip() or base
+    ref = (base_ref(base) or base) if base else "HEAD"
     weakened = []
     for path in changed:
         if not (path.startswith("tests/") and path.endswith(".py")):
