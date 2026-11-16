@@ -376,3 +376,18 @@ def test_no_storage_secret_or_latest_reference():
         lowered = text.lower()
         for forbidden in ("accountkey", "sig=", "aws_secret_access_key", "sas_token", "latest"):
             assert forbidden not in lowered
+
+
+def test_ci_runs_the_guardrail_on_the_whole_change_and_keeps_its_evidence():
+    """Rule violations fail the build; protected paths and size become needs_review for the required reviewer."""
+    [job] = [job for stage in CI["stages"] for job in stage["jobs"]]
+    steps = job["steps"]
+    assert steps[0].get("fetchDepth") == 0, "a shallow clone cannot measure the change"
+    scripts = [step.get("bash", "") for step in steps]
+    [guard] = [i for i, s in enumerate(scripts) if "tools/guardrail.py" in s]
+    assert "check --ci --no-tests --base" in scripts[guard] and "--json" in scripts[guard]
+    tests = next(i for i, s in enumerate(scripts) if "pytest" in s)
+    build = next(i for i, s in enumerate(scripts) if "operations/package.py" in s)
+    assert tests < guard < build, "after the tests, before anything is built"
+    [evidence] = [s for s in steps if s.get("artifact") == "evidence"]
+    assert "succeededOrFailed()" in evidence["condition"], "evidence survives a failed guardrail"
