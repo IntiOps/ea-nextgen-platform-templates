@@ -15,7 +15,7 @@ provider "azurerm" {
     resource_group { prevent_deletion_if_contains_resources = true }
   }
   subscription_id                 = var.subscription_id
-  use_oidc                        = true
+  use_oidc                        = var.use_oidc
   resource_provider_registrations = "none"
 }
 

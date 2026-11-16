@@ -21,8 +21,10 @@ def validate(plan, subscription, owner, instance, operation):
         if address not in expected:
             raise ValueError("plan includes resources outside this demo")
         values = change.get("change", {})
-        if "delete" in values.get("actions", []) and operation != "destroy":
-            raise ValueError("destructive changes require an explicit cleanup run")
+        actions = values.get("actions", [])
+        allowed = ({"delete", "no-op"} if operation == "destroy" else {"create", "update", "no-op"})
+        if not actions or any(action not in allowed for action in actions):
+            raise ValueError("plan actions do not match the requested operation")
         identifier = (values.get("before") or {}).get("id")
         if identifier and identifier.lower() != expected[address].lower():
             raise ValueError("existing resource does not belong to this demo instance")
