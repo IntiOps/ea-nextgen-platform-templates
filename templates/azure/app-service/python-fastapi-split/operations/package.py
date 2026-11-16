@@ -13,12 +13,14 @@ import re
 import zipfile
 from pathlib import Path
 
-APP_FILES = ("main.py", "requirements.txt")
+SKIP_PARTS = {"__pycache__", ".pytest_cache"}
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)
 
 
 def _entries(app: Path, site_packages: Path | None, revision: str, build_id: str) -> dict[str, bytes]:
-    files = {name: (app / name).read_bytes() for name in APP_FILES}
+    # The whole application tree (entrypoint, service package, requirements), sorted for determinism.
+    files = {path.relative_to(app).as_posix(): path.read_bytes() for path in sorted(app.rglob("*"))
+             if path.is_file() and not SKIP_PARTS.intersection(path.parts) and path.suffix != ".pyc"}
     files["build-info.json"] = json.dumps({"revision": revision, "build_id": build_id}, sort_keys=True).encode()
     if site_packages is not None:
         for path in sorted(site_packages.rglob("*")):

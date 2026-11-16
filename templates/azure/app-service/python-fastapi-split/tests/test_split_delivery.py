@@ -179,7 +179,10 @@ def test_package_is_deterministic_and_records_its_run(tmp_path):
     assert _build(tmp_path, "a.zip") == _build(tmp_path, "b.zip")
     with zipfile.ZipFile(tmp_path / "a.zip") as archive:
         info = json.loads(archive.read("build-info.json"))
+        names = set(archive.namelist())
     assert info == {"revision": REVISION, "build_id": "42"}
+    assert {"main.py", "requirements.txt", "service/domain/greeting.py", "service/infrastructure/http/api.py"} <= names
+    assert not any("__pycache__" in name for name in names)
     with pytest.raises(ValueError):
         package.build(ROOT / "app", tmp_path / "c.zip", revision="main", build_id="42")
 
