@@ -1,10 +1,11 @@
 schema_version: '1.2'
 id: fastapi-azure-webapp-split
-version: 0.2.0
+version: 0.3.0
 name: FastAPI on Azure Web App, separated CI/CD
 owner: platform-team
 description: Azure Pipelines CI builds the package once; a separate CD pipeline promotes that exact
-  artifact through environments with a per-environment infrastructure preview and approval. Static
+  artifact through environments with a per-environment infrastructure preview and approval. Each
+  environment deploys into a resource group the platform team owns (resource-group scope). Static
   contract tests pass; no Azure run evidence yet.
 status: draft
 materializes:
@@ -43,7 +44,8 @@ variants:
       CD resource `source` must name the CI definition.
     - One Azure DevOps environment and one Azure service connection per promotion stage, with approvals
       and checks configured on each environment. Connecting Azure DevOps grants nothing in Azure.
-    - Permission to create resource groups in the target subscription of each environment.
+    - One existing resource group per environment, owned by the platform team. Each environment's
+      service connection needs Contributor on that resource group only, never on the subscription.
   files:
     application:
     - app/main.py

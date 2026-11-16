@@ -127,7 +127,7 @@ def test_the_preview_runs_in_its_own_stage_before_the_approval():
     assert promote["dependsOn"] == plan["stage"]
     [apply] = promote["jobs"]
     assert apply["environment"] == "${{ env.azureEnvironment }}"
-    assert "sub create" in str(_steps(apply)) and "webapp deploy" in str(_steps(apply))
+    assert "deployment group create" in str(_steps(apply)) and "webapp deploy" in str(_steps(apply))
 
 
 def test_promotions_to_one_environment_run_one_at_a_time():
@@ -150,6 +150,17 @@ def test_default_chain_approves_production():
     envs = {p["name"]: p for p in CD["parameters"]}["environments"]["default"]
     assert [e["name"] for e in envs] == ["dev", "prod"]
     assert len({e["serviceConnection"] for e in envs}) == len(envs), "no identity shared across environments"
+
+
+def test_infrastructure_stays_inside_each_environment_resource_group():
+    """The platform team owns the resource group; the template never needs subscription rights."""
+    assert "targetScope = 'resourceGroup'" in (ROOT / "infra/bicep/main.bicep").read_text()
+    assert "Microsoft.Resources/resourceGroups" not in (ROOT / "infra/bicep/main.bicep").read_text()
+    envs = {p["name"]: p for p in CD["parameters"]}["environments"]["default"]
+    assert all(e.get("resourceGroup") for e in envs), "every environment names its resource group"
+    assert len({e["resourceGroup"] for e in envs}) == len(envs), "no resource group shared across environments"
+    assert "deployment sub " not in CD_TEXT
+    assert CD_TEXT.count('--resource-group "${{ env.resourceGroup }}"') == 2, "what-if and apply target the same group"
 
 
 def test_app_service_does_not_rebuild_the_package():
