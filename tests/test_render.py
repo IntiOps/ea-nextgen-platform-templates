@@ -81,3 +81,64 @@ def test_infra_mode_defaults_to_new(tmp_path):
     cd = yaml.safe_load((tmp_path / "out/pipelines/azure-pipelines/cd.yml").read_text())
     [env] = {p["name"]: p["default"] for p in cd["parameters"]}["environments"]
     assert env["infraMode"] == "new" and env["existingPlanId"] == "" and env["appName"] == ""
+
+
+# ── Container Apps split package: same contract, runtime-specific environment keys ─────────────
+
+CONTAINERAPPS = json.loads((ROOT / "tests/fixtures/render-contract-containerapps.json").read_text())
+
+
+@pytest.fixture
+def rendered_containerapps(tmp_path):
+    out = tmp_path / "orders-api"
+    record = render_local.render(ROOT / CONTAINERAPPS["package"], out, CONTAINERAPPS["values"])
+    return out, record
+
+
+def test_containerapps_renders_its_environment_chain(rendered_containerapps):
+    out, record = rendered_containerapps
+    assert record["names"] == CONTAINERAPPS["expect"]["names"]
+    leftovers = [p for p in out.rglob("*") if p.is_file() and render_local.TOKEN.search(p.read_text(errors="ignore"))]
+    assert leftovers == []
+    agents = (out / "AGENTS.md").read_text()
+    assert all(text in agents for text in CONTAINERAPPS["expect"]["agents_md_contains"])
+    cd = yaml.safe_load((out / "pipelines/azure-pipelines/cd.yml").read_text())
+    params = {p["name"]: p["default"] for p in cd["parameters"]}
+    assert params["environments"] == CONTAINERAPPS["expect"]["cd_environments"]
+    assert params["service"] == params["artifactName"] == "orders-api"
+    assert cd["resources"]["pipelines"][0]["source"] == "orders-api-ci"
+    assert "      name: orders-api\n" in (out / "template.yaml").read_text()
+    assert json.loads((out / ".ea/package.json").read_text())["package_id"] == "fastapi-azure-containerapps-split"
+
+
+def test_containerapps_rendered_repository_passes_its_own_tests(rendered_containerapps):
+    out, _ = rendered_containerapps
+    tests = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"], cwd=out,
+                           capture_output=True, text=True)
+    assert tests.returncode == 0, tests.stdout[-2000:]
+    arch = subprocess.run([sys.executable, "tools/check_architecture.py"], cwd=out, capture_output=True, text=True)
+    assert arch.returncode == 0, arch.stdout
+
+
+@pytest.mark.parametrize("change, message", [
+    ({"environments": [{"name": "dev", "purpose": "development", "resourceGroup": "rg"}]}, "registry is required"),
+    ({"environments": [{"name": "dev", "purpose": "development", "resourceGroup": "rg", "registry": "a.azurecr.io",
+                        "infraMode": "shared"}]}, "existingEnvironmentId"),
+    ({"environments": [{"name": "dev", "purpose": "development", "resourceGroup": "rg", "registry": "a.azurecr.io",
+                        "infraMode": "shared", "existingPlanId": "/x"}]}, "existingEnvironmentId"),
+    ({"environments": [{"name": "dev", "purpose": "development", "resourceGroup": "rg", "registry": "a.azurecr.io",
+                        "infraMode": "bind"}]}, "appName"),
+])
+def test_containerapps_invalid_values_are_refused(tmp_path, change, message):
+    with pytest.raises(render_local.RenderError, match=message):
+        render_local.render(ROOT / CONTAINERAPPS["package"], tmp_path / "out", {**CONTAINERAPPS["values"], **change})
+
+
+def test_containerapps_new_mode_defaults(tmp_path):
+    values = {**CONTAINERAPPS["values"], "environments": [
+        {"name": "dev", "purpose": "development", "resourceGroup": "rg-a-dev", "registry": "acra.azurecr.io"}]}
+    render_local.render(ROOT / CONTAINERAPPS["package"], tmp_path / "out", values)
+    cd = yaml.safe_load((tmp_path / "out/pipelines/azure-pipelines/cd.yml").read_text())
+    [env] = {p["name"]: p["default"] for p in cd["parameters"]}["environments"]
+    assert env["infraMode"] == "new" and env["existingEnvironmentId"] == "" and env["registryIdentityId"] == ""
+    assert "existingPlanId" not in env

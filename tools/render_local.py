@@ -18,7 +18,10 @@ Rendering contract v1
   3. Split delivery (template.yaml variant delivery): set the pipeline defaults exactly as the
      platform's split generation does: CI artifactName, CD service, artifactName, the CI resource
      source (naming preset) and the environments chain (name, azureEnvironment, serviceConnection,
-     purpose, location, resourceGroup, infraMode, existingPlanId, appName, artifactProvider). The two
+     purpose, location, resourceGroup, infraMode, <shared key>, appName, <runtime keys>,
+     artifactProvider). The variant runtime picks the keys (RUNTIME_ENVIRONMENT_KEYS):
+     azure_web_app shares a plan (existingPlanId); azure_container_apps shares a managed environment
+     (existingEnvironmentId) and adds registry (required) and registryIdentityId. The two
      pipeline files are re-emitted with a "generated" header; template.yaml keeps its text and only
      its artifact name changes.
   4. Write .ea/package.json (provenance the platform verifies).
@@ -44,6 +47,11 @@ KEYS = {"service", "location", "package_id", "package_version", "package_commit"
 SKIP = {"__pycache__", ".pytest_cache", ".DS_Store"}
 SLUG = re.compile(r"^[a-z][a-z0-9-]{1,40}[a-z0-9]$")
 INFRA_MODES = {"new", "shared", "bind"}
+#: Per variant runtime: the key infraMode shared needs, and extra environment keys (required, optional).
+RUNTIME_ENVIRONMENT_KEYS = {
+    "azure_web_app": {"shared": "existingPlanId", "required": (), "optional": ()},
+    "azure_container_apps": {"shared": "existingEnvironmentId", "required": ("registry",), "optional": ("registryIdentityId",)},
+}
 
 
 class RenderError(ValueError):
@@ -121,19 +129,26 @@ def _set_default(parameters: list[dict], name: str, value) -> None:
     raise RenderError(f"pipeline parameter {name} not found")
 
 
-def _environments(spec: dict, service: str, naming: dict, location: str) -> list[dict]:
+def _environments(spec: dict, service: str, naming: dict, location: str, runtime: str) -> list[dict]:
+    if runtime not in RUNTIME_ENVIRONMENT_KEYS:
+        raise RenderError(f"no split environment keys for runtime {runtime}")
+    keys = RUNTIME_ENVIRONMENT_KEYS[runtime]
+    shared = keys["shared"]
     chain = []
     for env in spec["environments"]:
         name = env["name"]
         mode = env.get("infraMode", "new")
         if mode not in INFRA_MODES:
             raise RenderError(f"environment {name}: infraMode must be one of {sorted(INFRA_MODES)}")
-        if mode == "shared" and not env.get("existingPlanId"):
-            raise RenderError(f"environment {name}: infraMode shared needs existingPlanId")
+        if mode == "shared" and not env.get(shared):
+            raise RenderError(f"environment {name}: infraMode shared needs {shared}")
         if mode == "bind" and not env.get("appName"):
             raise RenderError(f"environment {name}: infraMode bind needs appName")
         if not env.get("resourceGroup"):
             raise RenderError(f"environment {name}: resourceGroup is required (the platform team owns it)")
+        for key in keys["required"]:
+            if not env.get(key):
+                raise RenderError(f"environment {name}: {key} is required for {runtime}")
         chain.append({
             "name": name,
             "azureEnvironment": env.get("azureEnvironment") or _pattern(naming["environment"], service=service, environment=name),
@@ -142,8 +157,10 @@ def _environments(spec: dict, service: str, naming: dict, location: str) -> list
             "location": env.get("location", location),
             "resourceGroup": env["resourceGroup"],
             "infraMode": mode,
-            "existingPlanId": env.get("existingPlanId", ""),
+            shared: env.get(shared, ""),
             "appName": env.get("appName", ""),
+            **{key: env[key] for key in keys["required"]},
+            **{key: env.get(key, "") for key in keys["optional"]},
             "artifactProvider": "azure_pipeline",
         })
     return chain
@@ -168,7 +185,7 @@ def _split_delivery(out: Path, spec: dict, service: str, location: str, provenan
     parameters = cd.get("parameters") or []
     _set_default(parameters, "service", service)
     _set_default(parameters, "artifactName", artifact)
-    _set_default(parameters, "environments", _environments(spec, service, naming, location))
+    _set_default(parameters, "environments", _environments(spec, service, naming, location, variant["runtime"]))
     header = f"# {{}} generated from {provenance} by tools/render_local.py. Regenerate instead of editing.\n"
     ci_path.write_text(header.format("CI producer") + yaml.dump(ci, Dumper=_BlockDumper, sort_keys=False, width=200, allow_unicode=True))
     cd_path.write_text(header.format("CD consumer") +

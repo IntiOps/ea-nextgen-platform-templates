@@ -1,0 +1,34 @@
+# Dependency rules for this service. Read by tools/check_architecture.py and tools/guardrail.py.
+# Modules are dotted names under source_root. Patterns use shell-style wildcards.
+# Changing this file is an architecture decision: it is a protected path (Platform Team + architect).
+source_root = "app"
+
+[[rules]]
+id = "ARCH-001"
+statement = "The domain depends on nothing outside the domain: no application, no infrastructure, no frameworks, no cloud SDKs."
+source = ["service.domain", "service.domain.*"]
+forbid = ["service.application", "service.application.*", "service.infrastructure", "service.infrastructure.*",
+          "fastapi*", "starlette*", "pydantic*", "uvicorn*", "requests*", "httpx*", "sqlalchemy*", "sqlite3", "azure*"]
+adr = "ADR-0001"
+
+[[rules]]
+id = "ARCH-002"
+statement = "The application layer depends on the domain and its own ports, never on infrastructure, frameworks or cloud SDKs."
+source = ["service.application", "service.application.*"]
+forbid = ["service.infrastructure", "service.infrastructure.*",
+          "fastapi*", "starlette*", "uvicorn*", "requests*", "httpx*", "sqlalchemy*", "sqlite3", "azure*"]
+adr = "ADR-0001"
+
+[[rules]]
+id = "ARCH-003"
+statement = "Only the entrypoint wires the HTTP adapter; nothing inside the service imports main."
+source = ["service", "service.*"]
+forbid = ["main"]
+adr = "ADR-0001"
+
+# When a change is big enough that a person must look before an agent continues (agent mode fails,
+# CI marks needs_review). A trigger for attention, not a quality bar.
+[change_budget]
+max_files = 15
+max_changed_lines = 400
+statement = "Large changes are reviewed by a person before they continue."

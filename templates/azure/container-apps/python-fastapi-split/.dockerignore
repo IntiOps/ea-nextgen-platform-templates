@@ -1,0 +1,9 @@
+# Allow-list: only the application reaches the build context. Tests, pipelines, infra, operations,
+# the AI kit and any local secrets stay out of the image.
+*
+!app/
+app/**/__pycache__
+app/**/*.pyc
+app/.pytest_cache
+app/.venv
+app/.env*

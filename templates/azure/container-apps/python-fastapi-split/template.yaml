@@ -1,0 +1,118 @@
+schema_version: '1.2'
+id: fastapi-azure-containerapps-split
+version: 0.1.0
+name: FastAPI on Azure Container Apps, separated CI/CD
+owner: platform-team
+description: Azure Pipelines CI builds the container image once and saves it as a verified artifact; a
+  separate CD pipeline pushes that exact image to each environment's platform-owned Azure Container
+  Registry and deploys it by digest, with a per-environment infrastructure preview and approval. Each
+  environment deploys into a resource group the platform team owns (resource-group scope). Static
+  contract tests pass; no Azure run evidence yet.
+status: draft
+materializes:
+- element_type: api
+  requires_properties: {}
+  variants:
+  - azure-bicep-azure-pipelines-split
+parameters:
+- name: service
+  description: 'Service name, lower-case kebab-case; environments are <service>-<environment>.'
+  kind: string
+- name: location
+  description: Azure region identifier.
+  kind: string
+  default: westeurope
+- name: cloud_credential
+  description: One Azure service connection per environment, referenced by the delivery binding; never
+    stored in the package.
+  kind: credential_reference
+variants:
+- id: azure-bicep-azure-pipelines-split
+  cloud: azure
+  runtime: azure_container_apps
+  iac_engine: bicep
+  repository_provider: azure_repos
+  cicd_provider: azure_pipelines
+  requirements:
+    capabilities:
+    - plan
+    - deploy
+    tools:
+      python: '3.12'
+      azure_cli: '>=2.60'
+      docker: '>=24'
+    prerequisites:
+    - Two Azure Pipelines definitions in one Azure DevOps project, created from ci.yml and cd.yml; the
+      CD resource `source` must name the CI definition.
+    - One Azure DevOps environment and one Azure service connection per promotion stage, with approvals
+      and checks configured on each environment. Connecting Azure DevOps grants nothing in Azure.
+    - One existing resource group per environment, owned by the platform team. Each environment's
+      service connection needs Contributor on that resource group only, never on the subscription.
+    - One existing, platform-owned Azure Container Registry per environment (`registry`, its login
+      server). Each environment's service connection needs AcrPush on it; the app's pulling identity
+      needs AcrPull, granted by the platform team (this template creates no role assignment).
+    - infraMode per environment in cd.yml. new (default) creates Log Analytics, the managed environment
+      and the app; shared needs existingEnvironmentId and the join permission on that environment; bind
+      needs appName of an existing single-container app that already pulls from `registry`.
+  files:
+    application:
+    - app/main.py
+    - app/requirements.txt
+    - Dockerfile
+    - .dockerignore
+    - operations/package_image.py
+    infrastructure:
+    - infra/bicep/main.bicep
+    - infra/bicep/environment.bicep
+    - infra/bicep/app.bicep
+    pipeline: pipelines/azure-pipelines/ci.yml
+    smoke_test: tests/smoke.py
+    cleanup: operations/cleanup.md
+    readme: README.md
+  delivery:
+    topology: split_ci_cd
+    ci_pipeline: pipelines/azure-pipelines/ci.yml
+    cd_pipeline: pipelines/azure-pipelines/cd.yml
+    artifact:
+      name: fastapi-containerapp
+      kind: container_image
+      # No transport block: the image tarball travels only as the native Azure Pipelines artifact,
+      # which CD verifies; Azure Blob and S3 copies are not implemented for images.
+    # SPLIT-T2: what these pipelines assume about the repository and the Git flow. EA compares them
+    # with the project's delivery design and topology and reports differences; declaring them here
+    # applies nothing to any repository.
+    presets:
+      repository_preset: app_with_iac
+      branching: trunk_parallel
+      merge_method: squash
+      naming:
+        ci_pipeline: <service>-ci
+        cd_pipeline: <service>-cd
+        artifact: <service>
+        environment: <service>-<environment>
+outputs:
+- name: application-url
+  kind: url
+  description: Container app ingress URL verified by the post-deployment revision check in each environment.
+- name: image-digest
+  kind: image_digest
+  description: Registry digest of the promoted image in each environment's registry; the app runs it by digest.
+- name: health-check
+  kind: health_evidence
+  description: HTTP check bound to the CI commit that produced the promoted image.
+lifecycle:
+  cost_assumptions: Container Apps Consumption per environment (scale to zero in development and poc,
+    1 replica in staging, 2 in production) plus Log Analytics ingestion in infraMode new. Registries
+    are platform-owned and not counted here. Pricing depends on region; this package has no verified
+    currency estimate.
+  billable_resources:
+  - Azure Container Apps (Consumption) per environment
+  - Log Analytics workspace ingestion and retention (infraMode new)
+  - image storage in the platform-owned registry
+  suggested_ttl_hours: 8
+  cleanup_policy: explicit_approval
+  preserve:
+  - resources not owned by the instance resource group
+  - shared managed environments and platform-owned registries
+  recovery: If a stage fails, fix forward with a new CI run and promote it; never edit a deployed
+    image in place. The previous environment keeps the last verified image digest.

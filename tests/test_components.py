@@ -3,6 +3,8 @@ import importlib.util
 import json
 from fnmatch import fnmatch
 
+import pytest
+
 ROOT=Path(__file__).resolve().parents[1]
 
 
@@ -28,8 +30,11 @@ AI_KIT = [entry['path'].removeprefix('components/ai-kit/')
           if not entry['path'].endswith('/README.md')]
 
 
+SPLIT_PACKAGES = ['azure/app-service/python-fastapi-split', 'azure/container-apps/python-fastapi-split']
+
+
 def test_ai_kit_copies_match_canonical_sources():
-    for package in ['azure/app-service/python-fastapi-split']:
+    for package in SPLIT_PACKAGES:
         for name in AI_KIT:
             assert (ROOT/'components/ai-kit'/name).read_bytes() == (ROOT/'templates'/package/name).read_bytes(), name
 
@@ -49,12 +54,13 @@ def test_ai_kit_protected_paths_agree_everywhere():
         assert f'`{path.rstrip("*").rstrip("/") if path.endswith("/*") else path}' in agents, path
 
 
-def test_ai_kit_checker_is_clean_on_the_template_and_catches_a_layer_violation(tmp_path):
+@pytest.mark.parametrize('package', SPLIT_PACKAGES)
+def test_ai_kit_checker_is_clean_on_the_template_and_catches_a_layer_violation(tmp_path, package):
     import shutil
     import subprocess
     import sys
     copy = tmp_path/'service'
-    shutil.copytree(ROOT/'templates/azure/app-service/python-fastapi-split', copy,
+    shutil.copytree(ROOT/'templates'/package, copy,
                     ignore=shutil.ignore_patterns('__pycache__', '.pytest_cache'))
     run = lambda: subprocess.run([sys.executable, 'tools/check_architecture.py', '--json'], cwd=copy,
                                  capture_output=True, text=True)
