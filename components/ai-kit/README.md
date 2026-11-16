@@ -27,4 +27,4 @@ that keeps it away from what judges it. Canonical source; templates carry byte-i
 paths and budget become `needs_review` there, for the required reviewer), and the build-validation
 policy plus required reviewers on the protected paths decide the merge.
 
-Used by: `templates/azure/app-service/python-fastapi-split`.
+Used by: `templates/azure/app-service/python-fastapi-split`, `templates/azure/container-apps/python-fastapi-split`.

@@ -2,8 +2,9 @@
 
 This repository is the `{{ea.service}}` service, created from template `{{ea.package_id}}`
 {{ea.package_version}} at commit `{{ea.package_commit}}` (see `.ea/package.json`).
-It runs on Azure App Service. Azure Pipelines builds it once (`pipelines/azure-pipelines/ci.yml`) and
-promotes the same package dev → prod (`cd.yml`), with an approval before prod.
+Its runtime and Azure resources are described in `template.yaml` and `infra/`. Azure Pipelines builds it
+once (`pipelines/azure-pipelines/ci.yml`) and promotes the same artifact dev → prod (`cd.yml`), with an
+approval before prod.
 
 ## Commands
 - `make install`  install app and test dependencies
@@ -26,8 +27,8 @@ promotes the same package dev → prod (`cd.yml`), with an approval before prod.
    need a person to look first.
 4. **You may not change what judges you:** the paths in `.eanextgen.d/rules/protected-paths.txt`
    (`AGENTS.md`, `CLAUDE.md`, `template.yaml`, `.claude/`, `.github/`, `.ea/`, `.eanextgen*`,
-   `pipelines/`, `infra/`, `operations/`, `tools/`, `Makefile`). Infra or pipeline needs go into an
-   ADR or a change request for the Platform Team.
+   `pipelines/`, `infra/`, `operations/`, `tools/`, `Makefile`, `Dockerfile`, `.dockerignore`).
+   Infra, pipeline or image build needs go into an ADR or a change request for the Platform Team.
 5. **Tests may change, never weaken.** Never delete an assertion or skip a test to make the build pass.
    `tests/test_split_delivery.py` guards the delivery contract: leave it alone.
 6. **No secrets.** No keys, connection strings or tokens in code, tests, logs or prompts.
