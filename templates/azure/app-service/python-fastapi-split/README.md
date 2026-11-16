@@ -30,6 +30,15 @@ resource-group scoped and creates only the plan and the web app inside it. Each 
 connection (workload identity federation, no secret) needs Contributor on its resource group alone.
 New infrastructure and infrastructure already in place are the same operation: deploy into a given group.
 
+| `infraMode` | Template owns | CD does | Extra per environment |
+| --- | --- | --- | --- |
+| `new` (default) | plan + web app | what-if, apply, deploy, smoke | — |
+| `shared` | web app only | what-if, apply (app on the existing plan), deploy, smoke | `existingPlanId` |
+| `bind` | nothing | verify the app exists, deploy, smoke; no infrastructure step | `appName` |
+
+`shared` across resource groups is unverified: App Service may require the app and the plan in the same
+resource group and region. Until a run proves otherwise, put the app's `resourceGroup` where the plan is.
+
 ## AI agent guardrails (AI kit v0)
 
 `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.github/copilot-instructions.md` and
