@@ -16,3 +16,11 @@ packages:
     path: templates/azure/app-service/python-fastapi-split
     status: draft
     cloud_verified: false
+  - id: fastapi-azure-containerapps-split
+    version: 0.1.0
+    cloud: azure
+    ecosystem: container-apps
+    stack: python-fastapi
+    path: templates/azure/container-apps/python-fastapi-split
+    status: draft
+    cloud_verified: false

@@ -1,0 +1,74 @@
+{
+  "rendering_contract": "1",
+  "package": "templates/azure/container-apps/python-fastapi-split",
+  "values": {
+    "service": "orders-api",
+    "location": "swedencentral",
+    "architecture": {
+      "name": "orders",
+      "version": "3",
+      "digest": "sha256:0f0e0d",
+      "node_id": "orders-api"
+    },
+    "environments": [
+      {
+        "name": "dev",
+        "purpose": "development",
+        "resourceGroup": "rg-orders-dev",
+        "infraMode": "shared",
+        "existingEnvironmentId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-platform-dev/providers/Microsoft.App/managedEnvironments/cae-shared-dev",
+        "registry": "acrplatformdev.azurecr.io",
+        "registryIdentityId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-orders-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-orders-pull"
+      },
+      {
+        "name": "prod",
+        "purpose": "production",
+        "resourceGroup": "rg-legacy-prod",
+        "infraMode": "bind",
+        "appName": "orders-legacy-prod",
+        "registry": "acrplatformprod.azurecr.io"
+      }
+    ]
+  },
+  "expect": {
+    "names": {
+      "ci_pipeline": "orders-api-ci",
+      "cd_pipeline": "orders-api-cd",
+      "artifact": "orders-api"
+    },
+    "agents_md_contains": [
+      "# AGENTS.md — orders-api",
+      "fastapi-azure-containerapps-split"
+    ],
+    "cd_environments": [
+      {
+        "name": "dev",
+        "azureEnvironment": "orders-api-dev",
+        "serviceConnection": "sc-orders-api-dev",
+        "purpose": "development",
+        "location": "swedencentral",
+        "resourceGroup": "rg-orders-dev",
+        "infraMode": "shared",
+        "existingEnvironmentId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-platform-dev/providers/Microsoft.App/managedEnvironments/cae-shared-dev",
+        "appName": "",
+        "registry": "acrplatformdev.azurecr.io",
+        "registryIdentityId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-orders-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-orders-pull",
+        "artifactProvider": "azure_pipeline"
+      },
+      {
+        "name": "prod",
+        "azureEnvironment": "orders-api-prod",
+        "serviceConnection": "sc-orders-api-prod",
+        "purpose": "production",
+        "location": "swedencentral",
+        "resourceGroup": "rg-legacy-prod",
+        "infraMode": "bind",
+        "existingEnvironmentId": "",
+        "appName": "orders-legacy-prod",
+        "registry": "acrplatformprod.azurecr.io",
+        "registryIdentityId": "",
+        "artifactProvider": "azure_pipeline"
+      }
+    ]
+  }
+}

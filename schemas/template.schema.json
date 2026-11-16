@@ -550,6 +550,7 @@
         "runtime": {
           "enum": [
             "azure_web_app",
+            "azure_container_apps",
             "aws_lambda",
             "kubernetes_existing",
             "aks",
