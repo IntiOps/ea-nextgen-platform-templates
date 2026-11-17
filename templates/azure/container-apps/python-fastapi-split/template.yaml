@@ -1,6 +1,6 @@
 schema_version: '1.2'
 id: fastapi-azure-containerapps-split
-version: 0.2.0
+version: 0.3.0
 name: FastAPI on Azure Container Apps, separated CI/CD
 owner: platform-team
 description: Azure Pipelines CI builds the container image once and saves it as a verified artifact; a
