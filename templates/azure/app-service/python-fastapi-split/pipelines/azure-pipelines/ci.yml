@@ -56,6 +56,12 @@ stages:
               python "${{ parameters.packageRoot }}/tools/guardrail.py" check --ci --no-tests --base "$base" \
                 --json "$(Build.ArtifactStagingDirectory)/evidence/guardrail.json"
             displayName: Architecture guardrail
+          # Advisory AI review, OPT-IN: sends the PR diff (source code) to an external API (Claude, Anthropic).
+          # Runs only for pull request builds with AI_REVIEW_ENABLED 'true'; never fails the build. The step
+          # comes from the AI kit (one file, byte-identical in every template); see that file for variables.
+          - template: ai-review-steps.yml
+            parameters:
+              packageRoot: ${{ parameters.packageRoot }}
           - bash: |
               set -euo pipefail
               site="$(Agent.TempDirectory)/site-packages"

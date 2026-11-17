@@ -1,6 +1,6 @@
 schema_version: '1.2'
 id: fastapi-azure-webapp-split
-version: 0.5.0
+version: 0.6.0
 name: FastAPI on Azure Web App, separated CI/CD
 owner: platform-team
 description: Azure Pipelines CI builds the package once; a separate CD pipeline promotes that exact

@@ -58,6 +58,24 @@ coding agents how to work in the generated repository and keep them off the path
 platform renders. Enforcement is the Azure Repos policy: build validation with the CI pipeline and the
 Platform Team as required reviewer on the protected paths.
 
+## Advisory AI review of pull requests (opt-in, P5-04)
+
+**Off by default, because it sends source code to an external API.** With the pipeline variable
+`AI_REVIEW_ENABLED` set to `true`, a pull request build runs `tools/ai_review.py` right after the
+guardrail (step from `pipelines/azure-pipelines/ai-review-steps.yml`, an AI kit file). It sends the diff
+against the target branch, `AGENTS.md`, the review prompt and the guardrail result to the Claude API
+(Anthropic; default model `claude-sonnet-5-5`, override with `AI_REVIEW_MODEL`) and posts the answer as
+one comment thread on the pull request, updated in place on every run.
+
+To enable it: add `ANTHROPIC_API_KEY` as a **secret** pipeline variable, set `AI_REVIEW_ENABLED` to
+`true`, and give the project's build service identity "Contribute to pull requests" on the repository.
+Files that look like secrets (`.env*`, keys, certificates, credential patterns) are withheld and listed
+by path only; a diff over `AI_REVIEW_MAX_DIFF_BYTES` (default 150000) is skipped, not truncated. It is
+advisory: the step never fails the build (`continueOnError`, exit 0) and the thread is created closed so
+comment-resolution policies ignore it. `evidence/ai-review.json` records what was sent (paths, sizes,
+model, request id), never code. Contract tests: `tests/test_ai_review.py` (fakes only). No real API call
+or Azure DevOps run has been made with it yet.
+
 ## Artifact transport (ART-T1)
 
 The package always travels as the native Azure Pipelines artifact, and CD always verifies that run's

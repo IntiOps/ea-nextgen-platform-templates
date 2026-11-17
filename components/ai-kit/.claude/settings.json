@@ -33,6 +33,8 @@
       "Write(tools/**)",
       "Edit(tests/test_split_delivery.py)",
       "Write(tests/test_split_delivery.py)",
+      "Edit(tests/test_ai_review.py)",
+      "Write(tests/test_ai_review.py)",
       "Read(.env*)",
       "Bash(az *)",
       "Bash(git push*)"

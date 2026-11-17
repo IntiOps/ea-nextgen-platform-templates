@@ -2,13 +2,13 @@
   "schema_version": "1.0",
   "kind": "reusable_component",
   "id": "ai-kit",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "AI agent guardrail kit for generated repositories",
   "deployable": false,
   "files": [
     {
       "path": "components/ai-kit/.claude/settings.json",
-      "sha256": "c7cd05cc7b3c6b643efb9e5bd1e810066cc6f8e623c21c37fda6d3dc0575c82c"
+      "sha256": "1e8f3acdff06016f79745400870a094479986eaf5bcfbac6987fdcabad5a0056"
     },
     {
       "path": "components/ai-kit/.eanextgen.d/rules/architecture-rules.toml",
@@ -16,7 +16,7 @@
     },
     {
       "path": "components/ai-kit/.eanextgen.d/rules/protected-paths.txt",
-      "sha256": "69ab2432de20140d70d45b65e5bb0c259316d0bb76b61b4064be542a03bb4762"
+      "sha256": "d49dc75a918247070d3134deded7e0484047355d2f61a9c3891bf1670099d411"
     },
     {
       "path": "components/ai-kit/.eanextgen.d/standards/analyse.prompt.md",
@@ -52,7 +52,7 @@
     },
     {
       "path": "components/ai-kit/AGENTS.md",
-      "sha256": "17592bd28499b84ce3a8e28d47cd108d2de12471070886fd15c8c72bbf5b24b5"
+      "sha256": "25122142d33e36b561b6ef710d55f72095abe6e0d1568564df30f8b3d721959a"
     },
     {
       "path": "components/ai-kit/CLAUDE.md",
@@ -64,11 +64,23 @@
     },
     {
       "path": "components/ai-kit/README.md",
-      "sha256": "f369775fe79eb899c93c677e44cb251ad4e4cfd24fb40a235179d588b8337aeb"
+      "sha256": "45bc8156b033d662b59335f1a4b00945ad799274a64915c59c4d311492d61ce3"
     },
     {
       "path": "components/ai-kit/docs/adr/0001-service-boundaries.md",
       "sha256": "469d43e3c0a119c6747f669b35f2858dbaa2246c83f05507e0a24bdd348b6ec5"
+    },
+    {
+      "path": "components/ai-kit/pipelines/azure-pipelines/ai-review-steps.yml",
+      "sha256": "6169ea26337e3e818a35ad9640844f13b8743516cfcaecfd96de5a454edd5337"
+    },
+    {
+      "path": "components/ai-kit/tests/test_ai_review.py",
+      "sha256": "7e43548543dac6a2d383d48f6b92e5e9a3e3a49431d8e6cffb19dc0464b08b04"
+    },
+    {
+      "path": "components/ai-kit/tools/ai_review.py",
+      "sha256": "8b925bcebc9d40f661eaae5482df744a4852765b1e60e5fcca624383c7ff9b01"
     },
     {
       "path": "components/ai-kit/tools/check_architecture.py",

@@ -1,0 +1,40 @@
+# Advisory AI review of a pull request (AI kit; included by ci.yml right after the guardrail).
+#
+# OPT-IN. It sends source code to an external API: the pull request diff, AGENTS.md, the review prompt
+# and the guardrail result go to the Claude API (Anthropic). It runs only when BOTH hold:
+#   - the build is a pull request build (Build.Reason PullRequest: the Azure Repos build validation policy)
+#   - the pipeline variable AI_REVIEW_ENABLED is 'true' (default: not set, so it never runs)
+# Enable it only where your organisation allows that code to leave Azure DevOps.
+#
+# Pipeline variables:
+#   AI_REVIEW_ENABLED         'true' to opt in
+#   ANTHROPIC_API_KEY         SECRET variable. Mapped below because secrets never reach scripts on their
+#                             own; Azure Pipelines masks it in logs and the script never prints it.
+#   AI_REVIEW_MODEL           optional, default claude-sonnet-5-5
+#   AI_REVIEW_MAX_DIFF_BYTES  optional, default 150000; a larger diff is skipped, never truncated
+# The build identity needs "Contribute to pull requests" on the repository to post the comment.
+#
+# Advisory: tools/ai_review.py always exits 0 and continueOnError keeps any other failure (such as the
+# SDK install) from failing the build. Files that look like secrets are withheld before anything is sent.
+# The Anthropic SDK is pinned here and installed in its own virtual environment, never in the app.
+parameters:
+  - name: packageRoot
+    type: string
+    default: .
+
+steps:
+  - bash: |
+      set -euo pipefail
+      venv="$(Agent.TempDirectory)/ai-review"
+      python -m venv "$venv"
+      "$venv/bin/python" -m pip install --disable-pip-version-check --quiet "anthropic==2.9.0"
+      "$venv/bin/python" "${{ parameters.packageRoot }}/tools/ai_review.py" \
+        --guardrail "$(Build.ArtifactStagingDirectory)/evidence/guardrail.json" \
+        --record "$(Build.ArtifactStagingDirectory)/evidence/ai-review.json"
+    displayName: Advisory AI review (opt-in, sends the diff to the Claude API)
+    condition: and(succeededOrFailed(), eq(variables['Build.Reason'], 'PullRequest'), eq(variables['AI_REVIEW_ENABLED'], 'true'))
+    continueOnError: true
+    timeoutInMinutes: 15
+    env:
+      ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
