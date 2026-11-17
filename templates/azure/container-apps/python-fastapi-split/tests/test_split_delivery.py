@@ -94,8 +94,9 @@ def test_manifest_declares_the_split_and_its_files_exist():
     assert MANIFEST["schema_version"] == "1.2" and DELIVERY["topology"] == "split_ci_cd"
     assert DELIVERY["ci_pipeline"] == VARIANT["files"]["pipeline"], "the stored pipeline is the CI producer"
     assert DELIVERY["ci_pipeline"] != DELIVERY["cd_pipeline"]
+    assert DELIVERY["cleanup_pipeline"] == "pipelines/azure-pipelines/cleanup.yml", "EA generates the declared cleanup"
     files = VARIANT["files"]
-    for path in (DELIVERY["ci_pipeline"], DELIVERY["cd_pipeline"], *files["application"], *files["infrastructure"],
+    for path in (DELIVERY["ci_pipeline"], DELIVERY["cd_pipeline"], DELIVERY["cleanup_pipeline"], *files["application"], *files["infrastructure"],
                  files["smoke_test"], files["cleanup"], files["readme"]):
         assert (ROOT / path).is_file(), path
     assert (VARIANT["runtime"], VARIANT["cicd_provider"], VARIANT["iac_engine"]) == ("azure_container_apps", "azure_pipelines", "bicep")
