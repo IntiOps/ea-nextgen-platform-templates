@@ -1,6 +1,6 @@
 schema_version: '1.2'
 id: fastapi-azure-containerapps-split
-version: 0.3.0
+version: 0.4.0
 name: FastAPI on Azure Container Apps, separated CI/CD
 owner: platform-team
 description: Azure Pipelines CI builds the container image once and saves it as a verified artifact; a
@@ -74,6 +74,9 @@ variants:
     topology: split_ci_cd
     ci_pipeline: pipelines/azure-pipelines/ci.yml
     cd_pipeline: pipelines/azure-pipelines/cd.yml
+    # P4-05: the gated cleanup. EA generates it with the CD's service and environments chain, keeps
+    # trigger none and an empty confirm, and publishes it with CI and CD; it never registers it.
+    cleanup_pipeline: pipelines/azure-pipelines/cleanup.yml
     artifact:
       name: fastapi-containerapp
       kind: container_image

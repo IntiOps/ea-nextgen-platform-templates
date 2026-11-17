@@ -1,6 +1,6 @@
 schema_version: '1.2'
 id: fastapi-azure-webapp-split
-version: 0.6.0
+version: 0.7.0
 name: FastAPI on Azure Web App, separated CI/CD
 owner: platform-team
 description: Azure Pipelines CI builds the package once; a separate CD pipeline promotes that exact
@@ -65,6 +65,9 @@ variants:
     topology: split_ci_cd
     ci_pipeline: pipelines/azure-pipelines/ci.yml
     cd_pipeline: pipelines/azure-pipelines/cd.yml
+    # P4-05: the gated cleanup. EA generates it with the CD's service and environments chain, keeps
+    # trigger none and an empty confirm, and publishes it with CI and CD; it never registers it.
+    cleanup_pipeline: pipelines/azure-pipelines/cleanup.yml
     artifact:
       name: fastapi-webapp
       kind: application_package

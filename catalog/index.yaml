@@ -9,7 +9,7 @@ packages:
     status: candidate
     cloud_verified: false
   - id: fastapi-azure-webapp-split
-    version: 0.6.0
+    version: 0.7.0
     cloud: azure
     ecosystem: app-service
     stack: python-fastapi
@@ -17,7 +17,7 @@ packages:
     status: draft
     cloud_verified: false
   - id: fastapi-azure-containerapps-split
-    version: 0.3.0
+    version: 0.4.0
     cloud: azure
     ecosystem: container-apps
     stack: python-fastapi
