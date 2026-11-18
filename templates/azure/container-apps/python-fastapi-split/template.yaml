@@ -1,6 +1,6 @@
-schema_version: '1.2'
+schema_version: '1.3'
 id: fastapi-azure-containerapps-split
-version: 0.4.0
+version: 0.5.0
 name: FastAPI on Azure Container Apps, separated CI/CD
 owner: platform-team
 description: Azure Pipelines CI builds the container image once and saves it as a verified artifact; a
@@ -64,12 +64,16 @@ variants:
     - operations/package_image.py
     infrastructure:
     - infra/bicep/main.bicep
+    - infra/bicep/main.parameters.json
     - infra/bicep/environment.bicep
     - infra/bicep/app.bicep
     pipeline: pipelines/azure-pipelines/ci.yml
     smoke_test: tests/smoke.py
     cleanup: operations/cleanup.md
     readme: README.md
+  developer_loop:
+    tool: azd
+    file: azure.yaml
   delivery:
     topology: split_ci_cd
     ci_pipeline: pipelines/azure-pipelines/ci.yml

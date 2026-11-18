@@ -9,6 +9,7 @@ param tags object
 param image string
 param registryServer string
 param registryIdentityId string
+param azdServiceName string
 param environmentId string
 var production = purpose == 'production'
 var useUserIdentity = !empty(registryIdentityId)
@@ -17,7 +18,7 @@ var minReplicas = production ? 2 : purpose == 'staging' ? 1 : 0
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
-  tags: tags
+  tags: empty(azdServiceName) ? tags : union(tags, { 'azd-service-name': azdServiceName })
   identity: useUserIdentity ? { type: 'UserAssigned', userAssignedIdentities: { '${registryIdentityId}': {} } } : { type: 'SystemAssigned' }
   properties: {
     environmentId: environmentId

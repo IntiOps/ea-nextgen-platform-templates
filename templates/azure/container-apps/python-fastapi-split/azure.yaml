@@ -1,0 +1,15 @@
+name: fastapi-azure-containerapps-split
+infra:
+  provider: bicep
+  path: infra/bicep
+  module: main
+services:
+  api:
+    project: .
+    host: containerapp
+    language: docker
+    apiVersion: '2024-03-01'
+    docker:
+      path: Dockerfile
+      context: .
+      registry: ${AZD_REGISTRY_SERVER}

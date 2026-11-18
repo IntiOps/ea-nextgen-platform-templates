@@ -1,5 +1,27 @@
 {
   "$defs": {
+    "DeveloperLoop": {
+      "additionalProperties": false,
+      "description": "A developer sandbox path declared by the package, never executed by EA NextGen.",
+      "properties": {
+        "tool": {
+          "const": "azd",
+          "title": "Tool",
+          "type": "string"
+        },
+        "file": {
+          "const": "azure.yaml",
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "file"
+      ],
+      "title": "DeveloperLoop",
+      "type": "object"
+    },
     "Files": {
       "additionalProperties": false,
       "properties": {
@@ -623,6 +645,17 @@
             }
           ],
           "default": null
+        },
+        "developer_loop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeveloperLoop"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -645,7 +678,8 @@
       "enum": [
         "1.0",
         "1.1",
-        "1.2"
+        "1.2",
+        "1.3"
       ],
       "title": "Schema Version",
       "type": "string"

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "instance": { "value": "${AZURE_ENV_NAME}" },
+    "ownerId": { "value": "${AZD_OWNER_ID}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "purpose": { "value": "development" },
+    "revision": { "value": "azd-sandbox" },
+    "image": { "value": "${AZD_BOOTSTRAP_IMAGE}" },
+    "registryServer": { "value": "${AZD_REGISTRY_SERVER}" },
+    "registryIdentityId": { "value": "${AZD_REGISTRY_IDENTITY_ID}" },
+    "azdServiceName": { "value": "api" }
+  }
+}

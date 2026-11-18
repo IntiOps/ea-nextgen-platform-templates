@@ -91,7 +91,7 @@ def _is_cloud(step):
 
 
 def test_manifest_declares_the_split_and_its_files_exist():
-    assert MANIFEST["schema_version"] == "1.2" and DELIVERY["topology"] == "split_ci_cd"
+    assert MANIFEST["schema_version"] == "1.3" and DELIVERY["topology"] == "split_ci_cd"
     assert DELIVERY["ci_pipeline"] == VARIANT["files"]["pipeline"], "the stored pipeline is the CI producer"
     assert DELIVERY["ci_pipeline"] != DELIVERY["cd_pipeline"]
     assert DELIVERY["cleanup_pipeline"] == "pipelines/azure-pipelines/cleanup.yml", "EA generates the declared cleanup"
@@ -356,7 +356,8 @@ def test_container_app_ingress_scale_and_tags():
     assert "{ type: 'Liveness', httpGet: { path: '/health', port: 8000 }" in app
     tags = "var tags = { managed_by: 'ea-nextgen-template', owner_id: ownerId, instance: instance, purpose: purpose, revision: revision }"
     assert tags in BICEP["main.bicep"]
-    assert BICEP["environment.bicep"].count("tags: tags") == 2 and "tags: tags" in app
+    assert BICEP["environment.bicep"].count("tags: tags") == 2
+    assert "tags: empty(azdServiceName) ? tags : union(tags, { 'azd-service-name': azdServiceName })" in app
 
 
 def test_dockerfile_runs_uvicorn_on_8000_as_a_non_root_user():
