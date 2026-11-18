@@ -393,3 +393,13 @@ def test_ci_runs_the_guardrail_on_the_whole_change_and_keeps_its_evidence():
     assert tests < guard < build, "after the tests, before anything is built"
     [evidence] = [s for s in steps if s.get("artifact") == "evidence"]
     assert "succeededOrFailed()" in evidence["condition"], "evidence survives a failed guardrail"
+
+
+def test_a_slow_first_start_is_verified_by_revision_not_cut_by_the_cli():
+    """CD run 40 of inventory-api (2026-11-18): the CLI's start tracking gave up after 10 minutes on a first cold
+    start on B1, the app started later, and prod was skipped. Deploy uploads only; the smoke test waits for the
+    exact revision, and App Service does not restart a container that is still starting."""
+    assert "--track-status false" in CD_TEXT
+    assert "smoke.py" in CD_TEXT and "--attempts 60" in CD_TEXT
+    web = (ROOT / "infra" / "bicep" / "web.bicep").read_text()
+    assert "WEBSITES_CONTAINER_START_TIME_LIMIT" in web
