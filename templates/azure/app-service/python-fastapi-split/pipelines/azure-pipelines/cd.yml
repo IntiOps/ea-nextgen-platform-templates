@@ -214,7 +214,9 @@ stages:
                         scriptLocation: inlineScript
                         inlineScript: |
                           set -euo pipefail
+                          # Upload only: the CLI's own start tracking gives up after 10 minutes, which a first cold
+                          # start on a small plan can exceed. The next step verifies the exact revision instead.
                           az webapp deploy --resource-group "$(APP_RG)" --name "$(APP_NAME)" --type zip \
-                            --src-path "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/app.zip"
-                    - bash: python3 "$(Pipeline.Workspace)/ci/delivery/tests/smoke.py" --url "$(APP_URL)" --revision "$(CI_COMMIT)"
+                            --src-path "$(Pipeline.Workspace)/ci/${{ parameters.artifactName }}/app.zip" --track-status false
+                    - bash: python3 "$(Pipeline.Workspace)/ci/delivery/tests/smoke.py" --url "$(APP_URL)" --revision "$(CI_COMMIT)" --attempts 60
                       displayName: Verify the promoted revision is serving

@@ -42,6 +42,8 @@ resource web 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'false' }
         { name: 'ENABLE_ORYX_BUILD', value: 'false' }
         { name: 'PYTHONPATH', value: '/home/site/wwwroot/packages' }
+        // A first cold start on a small plan can take minutes; do not restart the container before it answers.
+        { name: 'WEBSITES_CONTAINER_START_TIME_LIMIT', value: '1800' }
       ]
     }
   }
