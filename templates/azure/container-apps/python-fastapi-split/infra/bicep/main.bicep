@@ -24,6 +24,8 @@ param image string
 param registryServer string
 @description('Optional resource id of a platform-owned user-assigned identity that already has AcrPull on the registry. Empty: the app\'s system-assigned identity pulls (AcrPull granted by the platform team).')
 param registryIdentityId string = ''
+@description('Optional azd sandbox service tag. Empty in the governed Azure Pipelines path.')
+param azdServiceName string = ''
 @description('infraMode shared: resource id of an existing Container Apps managed environment. Empty in infraMode new.')
 param existingEnvironmentId string = ''
 @minValue(30)
@@ -48,6 +50,7 @@ module app './app.bicep' = {
     image: image
     registryServer: registryServer
     registryIdentityId: registryIdentityId
+    azdServiceName: azdServiceName
     environmentId: createEnvironment ? environment!.outputs.environmentId : existingEnvironmentId
   }
 }

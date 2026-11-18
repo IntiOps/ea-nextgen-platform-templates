@@ -3,6 +3,40 @@
 Same layered FastAPI service and AI kit as `templates/azure/app-service/python-fastapi-split`. This one
 ships as a container image to Azure Container Apps. Two Azure Pipelines definitions in one repository deliver it, and a third, queued by hand, removes it:
 
+## Developer sandbox with azd (schema 1.3)
+
+`azure.yaml` offers a local `azd up` loop for a **development resource group**. It uses the same
+`infra/bicep/main.bicep` entrypoint as the Azure Pipelines CD package. The parameter file fixes
+`purpose=development`; the Bicep app receives an `azd-service-name` tag only in this path. The
+production CI/CD pipeline and its digest, preview and approval gates are unchanged. EA NextGen reads
+this declaration but never runs azd or `azd pipeline config`.
+
+Before running azd, the developer needs an existing personal resource group, a registry they can push
+to, and a user-assigned identity in the resource group with AcrPull on that registry. A bootstrap image
+in the registry must already exist by digest so Bicep can provision the app before azd builds this
+package's source. The developer's Azure identity needs Contributor on the resource group, AcrPush on
+the registry, and permission to assign the user-assigned identity.
+
+From this package directory, after `azd auth login`:
+
+```sh
+azd env new <sandbox-name>
+azd env set AZURE_SUBSCRIPTION_ID <sandbox-subscription-id>
+azd env set AZURE_LOCATION <azure-region>
+azd env set AZURE_RESOURCE_GROUP <existing-personal-resource-group>
+azd env set AZD_OWNER_ID <owner-label>
+azd env set AZD_REGISTRY_SERVER <registry>.azurecr.io
+azd env set AZD_REGISTRY_IDENTITY_ID <user-assigned-identity-resource-id>
+azd env set AZD_BOOTSTRAP_IMAGE <registry>.azurecr.io/<image>@sha256:<digest>
+azd up
+```
+
+The bootstrap digest is for provisioning; `azd deploy` builds and pushes the source from this commit.
+The Azure Pipelines path separately builds once in CI and promotes its verified digest. Resource-group
+scoped azd provisioning is [currently beta](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/resource-group-scoped-deployments),
+so the pilot remains a draft until an actual sandbox `azd up` and an Azure DevOps run from the same
+commit are recorded. Keep local `.azure/` state out of commits.
+
 | Pipeline | File | Does | Never does |
 | --- | --- | --- | --- |
 | CI producer | `pipelines/azure-pipelines/ci.yml` | Tests, runs the guardrail, builds the image **once** (`operations/package_image.py`), saves it as `image.tar.gz` with `artifact.json` (SHA-256, image id, base image digest, commit, run id), publishes the delivery files | Deploy; log in to a registry; hold a cloud connection |
