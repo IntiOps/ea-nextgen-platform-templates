@@ -99,11 +99,29 @@ def test_ci_builds_and_never_deploys():
     assert "persistCredentials: false" in CI_TEXT
 
 
+def _activation_ok(resource):
+    """Two legitimate CD activations: on CI completion, which needs explicit branch filters, or `none` when
+    EA NextGen promotes each verified run itself (its topology's consumer trigger is "manual" and it renders
+    `trigger: none` here). Rule 2 holds either way: the CD never runs on push."""
+    trigger = resource.get("trigger", "none")
+    return trigger == "none" or bool((trigger.get("branches") or {}).get("include"))
+
+
+@pytest.mark.parametrize("trigger, ok", [
+    ("none", True),
+    ({"branches": {"include": ["main"]}}, True),
+    ({"branches": {"include": []}}, False),
+    ({}, False),
+])
+def test_cd_activation_is_filtered_completion_or_ea_orchestrated(trigger, ok):
+    assert _activation_ok({"pipeline": "ci", "source": "x-ci", "trigger": trigger}) is ok
+
+
 def test_cd_runs_only_from_a_ci_run_never_on_push():
     assert CD["trigger"] == "none" and CD["pr"] == "none"
     [resource] = CD["resources"]["pipelines"]
     assert resource["pipeline"] == "ci" and resource["source"]
-    assert resource["trigger"]["branches"]["include"], "completion activation needs explicit branch filters"
+    assert _activation_ok(resource), "completion activation needs explicit branch filters"
     assert CD["resources"]["pipelines"][0]["source"] != "self"
 
 
